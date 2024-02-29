@@ -89,14 +89,14 @@ public class CryptoLibrary {
     }
 
     ///////////////////////////////////////////////////////////////////////// Check-Subfunc ///////////////////////////////////////////////////////////////////////////////////
-    private static boolean verifyDigitalSignature(String receivedSignature, byte[] bytes, PublicKey pubKey) {
-        if (receivedSignature == null) return false;
+    private static boolean verifyDigitalSignature(String receivedSignature, String obj, PublicKey pubKey) {
+        if (receivedSignature == null || obj == null) return false;
         try {
             byte[] DSbytes = Base64.getDecoder().decode(receivedSignature);
             // verify the signature with the public key
             Signature sig = Signature.getInstance("SHA256withRSA");
             sig.initVerify(pubKey);
-            sig.update(bytes);
+            sig.update(obj.getBytes());
             return sig.verify(DSbytes);
         } catch (NoSuchAlgorithmException | InvalidKeyException | SignatureException se) {
             System.err.println("Caught exception while verifying " + se);
@@ -107,7 +107,7 @@ public class CryptoLibrary {
     ///////////////////////////////////////////////////////////////////////// Check ///////////////////////////////////////////////////////////////////////////////////
     public static Boolean Check(Object obj, String DS, int counter, String publicPathKey) {
         PublicKey publicKey = readPublicKey(publicPathKey);
-        return verifyDigitalSignature (DS, (ObjToString.objToString(obj)).getBytes(), publicKey);
+        return verifyDigitalSignature(DS, ObjToString.objToString(obj), publicKey);
     }
 }
 
