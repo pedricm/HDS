@@ -6,10 +6,6 @@ import pt.ulisboa.tecnico.hdsledger.client.Client;
 public class Main {
 
         public static void main(String[] args) {
-            if (args.length != 1) {
-                System.out.println(/*"Usage: java -jar Client.jar "*/"<Args Path>");
-                return;
-            }
 
             Client client = new Client(); //ipServer, portServer, privateClientKeyPath, publicClientKeyPath, privateClient2KeyPath, publicClient2KeyPath, publicServerKeyPath
             Scanner parser = new Scanner(System.in);
@@ -24,10 +20,7 @@ public class Main {
                     System.out.println("Quiting!");
                     return;
                 }
-                try {
-                    client.send(command);
-                } catch (IOException e) {
-                    e.printStackTrace();
+                client.send(command);
             }
         }
 
