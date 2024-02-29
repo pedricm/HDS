@@ -105,7 +105,7 @@ public class CryptoLibrary {
     }
 
     ///////////////////////////////////////////////////////////////////////// Check ///////////////////////////////////////////////////////////////////////////////////
-    public static Boolean Check(Object obj, String DS, int counter, String publicPathKey) {
+    public static Boolean Check(Object obj, String DS, String publicPathKey) {
         PublicKey publicKey = readPublicKey(publicPathKey);
         return verifyDigitalSignature(DS, ObjToString.objToString(obj), publicKey);
     }

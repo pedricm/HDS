@@ -1,6 +1,7 @@
 package pt.ulisboa.tecnico.hdsledger.communication;
 
 import com.google.gson.Gson;
+import pt.ulisboa.tecnico.hdsledger.utilities.CryptoLibrary;
 
 public class ConsensusMessage extends Message {
 
@@ -23,8 +24,16 @@ public class ConsensusMessage extends Message {
     public String getDS() {
         return DS;
     }
-    public void setDS(String DS) {
-        this.DS = DS;
+    public void setDS(String keysPath) {
+        this.DS = null;
+        this.DS = CryptoLibrary.CreateDS(this, keysPath + this.getSenderId() + ".priv");
+    }
+    public Boolean checkDS(String keypath) {
+        String DScopy = this.DS;
+        this.DS = null;
+        Boolean check = CryptoLibrary.Check(this, DScopy, keysPath + this.getSenderId() + ".priv");
+        this.DS = DScopy;
+        return check;
     }
     public PrePrepareMessage deserializePrePrepareMessage() {
         return new Gson().fromJson(this.message, PrePrepareMessage.class);
