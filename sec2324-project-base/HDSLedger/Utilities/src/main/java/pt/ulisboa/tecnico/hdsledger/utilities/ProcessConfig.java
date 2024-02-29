@@ -4,6 +4,7 @@ public class ProcessConfig {
     public ProcessConfig() {}
 
     private boolean isLeader;
+    private boolean isClient;
 
     private String hostname;
 
@@ -14,6 +15,7 @@ public class ProcessConfig {
     public boolean isLeader() {
         return isLeader;
     }
+    public boolean isClient() { return isClient; }
 
     public int getPort() {
         return port;

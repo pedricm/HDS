@@ -2,24 +2,28 @@
     {   
         "id": "1",
         "isLeader": true,
+        "isClient": false,
         "hostname": "localhost",
         "port": 3001
     },
     {
         "id": "2",
         "isLeader": false,
+        "isClient": false,
         "hostname": "localhost",
         "port": 3002
     },
     {
         "id": "3",
         "isLeader": false,
+        "isClient": false,
         "hostname": "localhost",
         "port": 3003
     },
     {
         "id": "4",
         "isLeader": false,
+        "isClient": true,
         "hostname": "localhost",
         "port": 3004
     }
