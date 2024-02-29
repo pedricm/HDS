@@ -13,7 +13,7 @@ import java.util.logging.Level;
 
 public class Main {
     private static final CustomLogger LOGGER = new CustomLogger(Main.class.getName());
-    private static String nodesConfigPath = "src/main/resources/";
+    private static String nodesConfigPath = "../Service/src/main/resources/";
 
     public static void main(String[] args) {
             try {
