@@ -14,11 +14,18 @@ public class ConsensusMessage extends Message {
     private int replyToMessageId;
     // Message (PREPREPARE, PREPARE, COMMIT)
     private String message;
+    // Digital Signature (Base64)
+    private String DS;
 
     public ConsensusMessage(String senderId, Type type) {
         super(senderId, type);
     }
-
+    public String getDS() {
+        return DS;
+    }
+    public void setDS(String DS) {
+        this.DS = DS;
+    }
     public PrePrepareMessage deserializePrePrepareMessage() {
         return new Gson().fromJson(this.message, PrePrepareMessage.class);
     }

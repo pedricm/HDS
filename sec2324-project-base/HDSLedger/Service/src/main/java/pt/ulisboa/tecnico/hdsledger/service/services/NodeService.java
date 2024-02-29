@@ -53,14 +53,16 @@ public class NodeService implements UDPService {
     // Ledger (for now, just a list of strings)
     private ArrayList<String> ledger = new ArrayList<String>();
 
+    private String keysPath;
+
     public NodeService(Link link, ProcessConfig config,
-            ProcessConfig leaderConfig, ProcessConfig[] nodesConfig) {
+            ProcessConfig leaderConfig, ProcessConfig[] nodesConfig, String keysPath) {
 
         this.link = link;
         this.config = config;
         this.leaderConfig = leaderConfig;
         this.nodesConfig = nodesConfig;
-
+        this.keysPath = keysPath;
         this.prepareMessages = new MessageBucket(nodesConfig.length);
         this.commitMessages = new MessageBucket(nodesConfig.length);
     }
@@ -88,6 +90,7 @@ public class NodeService implements UDPService {
                 .setConsensusInstance(instance)
                 .setRound(round)
                 .setMessage(prePrepareMessage.toJson())
+                .setDS(keysPath)
                 .build();
 
         return consensusMessage;
@@ -183,6 +186,7 @@ public class NodeService implements UDPService {
                 .setMessage(prepareMessage.toJson())
                 .setReplyTo(senderId)
                 .setReplyToMessageId(senderMessageId)
+                .setDS(keysPath)
                 .build();
 
         this.link.broadcast(consensusMessage);
@@ -232,6 +236,7 @@ public class NodeService implements UDPService {
                     .setReplyTo(senderId)
                     .setReplyToMessageId(message.getMessageId())
                     .setMessage(instance.getCommitMessage().toJson())
+                    .setDS(keysPath)
                     .build();
 
             link.send(senderId, m);
@@ -258,6 +263,7 @@ public class NodeService implements UDPService {
                         .setReplyTo(senderMessage.getSenderId())
                         .setReplyToMessageId(senderMessage.getMessageId())
                         .setMessage(c.toJson())
+                        .setDS(keysPath)
                         .build();
 
                 link.send(senderMessage.getSenderId(), m);
@@ -373,6 +379,10 @@ public class NodeService implements UDPService {
                                     LOGGER.log(Level.INFO,
                                             MessageFormat.format("{0} - Received IGNORE message from {1}",
                                                     config.getId(), message.getSenderId()));
+                                // case append para iniciar consensus que vem do client
+                                /*case APPEND ->
+                                    verficar Ds client e msg valida?
+                                    startConsensus(((ConsensusMessage) message).getMessage());*/
 
                                 default ->
                                     LOGGER.log(Level.INFO,

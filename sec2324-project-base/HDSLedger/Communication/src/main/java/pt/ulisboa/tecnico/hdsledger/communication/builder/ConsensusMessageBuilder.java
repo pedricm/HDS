@@ -2,6 +2,7 @@ package pt.ulisboa.tecnico.hdsledger.communication.builder;
 
 import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.Message;
+import pt.ulisboa.tecnico.hdsledger.utilities.CryptoLibrary;
 
 public class ConsensusMessageBuilder {
     private final ConsensusMessage instance;
@@ -10,6 +11,10 @@ public class ConsensusMessageBuilder {
         instance = new ConsensusMessage(sender, type);
     }
 
+    public ConsensusMessageBuilder setDS(String keysPath) {
+        instance.setDS(CryptoLibrary.CreateDS(instance, keysPath + instance.getSenderId() + ".priv"));
+        return this;
+    }
     public ConsensusMessageBuilder setMessage(String message) {
         instance.setMessage(message);
         return this;
