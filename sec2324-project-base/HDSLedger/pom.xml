@@ -9,6 +9,7 @@
     <packaging>pom</packaging>
     <version>1.0-SNAPSHOT</version>
     <modules>
+        <module>Client</module>
         <module>Service</module>
         <module>Utilities</module>
         <module>Communication</module>
