@@ -1,9 +1,12 @@
 package pt.ulisboa.tecnico.hdsledger.client;
 //import pt.ulisboa.tecnico.hdsledger.communication.Link;
 public class Client {
-    //Link linkToNodes = new Link(nodeConfig, nodeConfig.getPort(), nodeConfigs, ConsensusMessage.class);
-    public Client() {}
+    ClientLibrary clientLibrary;
+    public Client() {
+        clientLibrary = new ClientLibrary();
+    }
     public void send(String command) {
-        System.out.println("Sending command: " + command);
+        System.out.println("Sending command to the library: " + command);
+        clientLibrary.send(command);
     }
 }
