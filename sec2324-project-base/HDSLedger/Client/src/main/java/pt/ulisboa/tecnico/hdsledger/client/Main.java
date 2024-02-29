@@ -34,7 +34,7 @@ public class Main {
                 Link linkToNodes = new Link(nodeConfig, nodeConfig.getPort(), nodeConfigs,
                         ConsensusMessage.class);
 
-                Client client = new Client(linkToNodes); //ipServer, portServer, privateClientKeyPath, publicClientKeyPath, privateClient2KeyPath, publicClient2KeyPath, publicServerKeyPath
+                Client client = new Client(linkToNodes, nodeConfig, leaderConfig, nodeConfigs); //ipServer, portServer, privateClientKeyPath, publicClientKeyPath, privateClient2KeyPath, publicClient2KeyPath, publicServerKeyPath
                 Scanner parser = new Scanner(System.in);
 
                 printUsage();
