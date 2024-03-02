@@ -55,7 +55,6 @@ public class Link {
             this.nodes.put(id, node);
             receivedMessages.put(id, new CollapsingSet());
         });
-        System.out.println("CLIENTS"+clients);
         Arrays.stream(clients).forEach(client -> {
             String id = client.getId();
             this.clients.put(id, client);
