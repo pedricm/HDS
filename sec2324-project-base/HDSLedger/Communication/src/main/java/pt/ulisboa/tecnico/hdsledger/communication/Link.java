@@ -233,6 +233,11 @@ public class Link {
                 if (consensusMessage.getReplyTo() != null && consensusMessage.getReplyTo().equals(config.getId()))
                     receivedAcks.add(consensusMessage.getReplyToMessageId());
             }
+            case APPEND -> {
+                System.out.println("APPENDINGGGG");
+                ConsensusMessage consensusMessage = (ConsensusMessage) message;
+                return message;
+            }
             default -> {}
         }
 
