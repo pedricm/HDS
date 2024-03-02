@@ -31,7 +31,7 @@ public class ConsensusMessage extends Message {
     public Boolean checkDS(String keypath) {
         String DScopy = this.DS;
         this.DS = null;
-        Boolean check = CryptoLibrary.Check(this, DScopy, keysPath + this.getSenderId() + ".priv");
+        Boolean check = CryptoLibrary.Check(this, DScopy, keypath + this.getSenderId() + ".priv");
         this.DS = DScopy;
         return check;
     }
