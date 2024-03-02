@@ -3,8 +3,8 @@ import pt.ulisboa.tecnico.hdsledger.communication.Link;
 //import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
 import pt.ulisboa.tecnico.hdsledger.communication.Message;
-import pt.ulisboa.tecnico.hdsledger.communication.ClientMessage;
-import pt.ulisboa.tecnico.hdsledger.communication.builder.ClientMessageBuilder;
+import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
+import pt.ulisboa.tecnico.hdsledger.communication.builder.ConsensusMessageBuilder;
 
 
 public class ClientLibrary {
@@ -26,8 +26,8 @@ public class ClientLibrary {
         System.out.println("Sending command: " + msg);
         //PrepareMessage prepareMessage = new PrepareMessage(prePrepareMessage.getValue());
 
-        ClientMessage clientMessage = new ClientMessageBuilder(nodeConfig.getId(), Message.Type.APPEND).setMessage(msg).setReplyTo(nodeConfig.getId()).setReplyToMessageId(0).build();
-
-        this.link.broadcast(clientMessage);
+        //ClientMessage clientMessage = new ClientMessageBuilder(nodeConfig.getId(), Message.Type.APPEND).setMessage(msg).setReplyTo(nodeConfig.getId()).setReplyToMessageId(0).build();
+        ConsensusMessage consensusMessage = new ConsensusMessageBuilder(nodeConfig.getId(), Message.Type.APPEND).setMessage(msg).setReplyTo(nodeConfig.getId()).setReplyToMessageId(0).build();
+        this.link.broadcast(consensusMessage);
     }
 }

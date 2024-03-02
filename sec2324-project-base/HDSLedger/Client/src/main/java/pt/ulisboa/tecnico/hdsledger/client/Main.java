@@ -22,19 +22,25 @@ public class Main {
                 nodesConfigPath += args[1];
 
                 // Create configuration instances
-                ProcessConfig[] nodeConfigs = new ProcessConfigBuilder().fromFile(nodesConfigPath);
+                ProcessConfig[] configs = new ProcessConfigBuilder().fromFile(nodesConfigPath);
+                ProcessConfig[] nodeConfigs = Arrays.stream(configs)
+                        .filter(config -> !config.isClient())
+                        .toArray(ProcessConfig[]::new);
+                ProcessConfig[] clientConfigs = Arrays.stream(configs)
+                        .filter(ProcessConfig::isClient)
+                        .toArray(ProcessConfig[]::new);
                 ProcessConfig leaderConfig = Arrays.stream(nodeConfigs).filter(ProcessConfig::isLeader).findAny().get();
-                ProcessConfig nodeConfig = Arrays.stream(nodeConfigs).filter(c -> c.getId().equals(id)).findAny().get();
+                ProcessConfig ClientConfig = Arrays.stream(clientConfigs).filter(c -> c.getId().equals(id)).findAny().get();
 
                 LOGGER.log(Level.INFO, MessageFormat.format("{0} - Running at {1}:{2}; is leader: {3}",
-                        nodeConfig.getId(), nodeConfig.getHostname(), nodeConfig.getPort(),
-                        nodeConfig.isLeader()));
+                        ClientConfig.getId(), ClientConfig.getHostname(), ClientConfig.getPort(),
+                        ClientConfig.isLeader()));
 
                 // Abstraction to send and receive messages
-                Link linkToNodes = new Link(nodeConfig, nodeConfig.getPort(), nodeConfigs,
+                Link linkToNodes = new Link(ClientConfig, ClientConfig.getPort(), nodeConfigs,
                         ConsensusMessage.class);
 
-                Client client = new Client(linkToNodes, nodeConfig, leaderConfig, nodeConfigs); //ipServer, portServer, privateClientKeyPath, publicClientKeyPath, privateClient2KeyPath, publicClient2KeyPath, publicServerKeyPath
+                Client client = new Client(linkToNodes, ClientConfig, leaderConfig, nodeConfigs); //ipServer, portServer, privateClientKeyPath, publicClientKeyPath, privateClient2KeyPath, publicClient2KeyPath, publicServerKeyPath
                 Scanner parser = new Scanner(System.in);
 
                 printUsage();
