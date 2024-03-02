@@ -24,10 +24,16 @@ public class ClientLibrary {
 
     public void send(String msg) {
         System.out.println("Sending command: " + msg);
+        System.out.println("PrivKeyPath: " + nodeConfig.getPrivKeyPath());
+        System.out.println("PubKeyPath: " + nodeConfig.getPubKeyPath());
         //PrepareMessage prepareMessage = new PrepareMessage(prePrepareMessage.getValue());
 
         //ClientMessage clientMessage = new ClientMessageBuilder(nodeConfig.getId(), Message.Type.APPEND).setMessage(msg).setReplyTo(nodeConfig.getId()).setReplyToMessageId(0).build();
-        ConsensusMessage consensusMessage = new ConsensusMessageBuilder(nodeConfig.getId(), Message.Type.APPEND).setMessage(msg).setReplyTo(nodeConfig.getId()).setReplyToMessageId(0).build();
+        ConsensusMessage consensusMessage = new ConsensusMessageBuilder(nodeConfig.getId(), Message.Type.APPEND)
+                .setMessage(msg).setReplyTo(nodeConfig.getId())
+                .setReplyToMessageId(0)
+                .setDS(nodeConfig.getPrivKeyPath())
+                .build();
         this.link.broadcast(consensusMessage);
     }
 }

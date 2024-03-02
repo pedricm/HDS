@@ -26,7 +26,7 @@ public class ConsensusMessage extends Message {
     }
     public void setDS(String keysPath) {
         this.DS = null;
-        this.DS = CryptoLibrary.CreateDS(this, keysPath + this.getSenderId() + ".priv");
+        this.DS = CryptoLibrary.CreateDS(this, keysPath + "key_" + this.getSenderId() + "_priv.key");
     }
     public Boolean checkDS(String keypath) {
         String DScopy = this.DS;

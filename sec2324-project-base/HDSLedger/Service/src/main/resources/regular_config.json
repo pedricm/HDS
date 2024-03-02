@@ -4,27 +4,35 @@
         "isLeader": true,
         "isClient": false,
         "hostname": "localhost",
-        "port": 3001
+        "port": 3001,
+        "pubKeyPath": "../Service/src/main/resources/keys/",
+        "privKeyPath": "../Service/src/main/resources/keys/"
     },
     {
         "id": "2",
         "isLeader": false,
         "isClient": false,
         "hostname": "localhost",
-        "port": 3002
+        "port": 3002,
+        "pubKeyPath": "../Service/src/main/resources/keys/",
+        "privKeyPath": "../Service/src/main/resources/keys/"
     },
     {
         "id": "3",
         "isLeader": false,
         "isClient": false,
         "hostname": "localhost",
-        "port": 3003
+        "port": 3003,
+        "pubKeyPath": "../Service/src/main/resources/keys/",
+        "privKeyPath": "../Service/src/main/resources/keys/"
     },
     {
         "id": "4",
         "isLeader": false,
         "isClient": true,
         "hostname": "localhost",
-        "port": 3004
+        "port": 3004,
+        "pubKeyPath": "../Service/src/main/resources/keys/",
+        "privKeyPath": "../Service/src/main/resources/keys/"
     }
 ]
