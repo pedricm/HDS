@@ -5,8 +5,8 @@
         "isClient": false,
         "hostname": "localhost",
         "port": 3001,
-        "pubKeyPath": "../Service/src/main/resources/keys/",
-        "privKeyPath": "../Service/src/main/resources/keys/"
+        "pubKeyPath": "../Service/src/main/resources/",
+        "privKeyPath": "../Service/src/main/resources/"
     },
     {
         "id": "2",
@@ -14,8 +14,8 @@
         "isClient": false,
         "hostname": "localhost",
         "port": 3002,
-        "pubKeyPath": "../Service/src/main/resources/keys/",
-        "privKeyPath": "../Service/src/main/resources/keys/"
+        "pubKeyPath": "../Service/src/main/resources/",
+        "privKeyPath": "../Service/src/main/resources/"
     },
     {
         "id": "3",
@@ -23,8 +23,8 @@
         "isClient": false,
         "hostname": "localhost",
         "port": 3003,
-        "pubKeyPath": "../Service/src/main/resources/keys/",
-        "privKeyPath": "../Service/src/main/resources/keys/"
+        "pubKeyPath": "../Service/src/main/resources/",
+        "privKeyPath": "../Service/src/main/resources/"
     },
     {
         "id": "4",
@@ -32,7 +32,7 @@
         "isClient": true,
         "hostname": "localhost",
         "port": 3004,
-        "pubKeyPath": "../Service/src/main/resources/keys/",
-        "privKeyPath": "../Service/src/main/resources/keys/"
+        "pubKeyPath": "../Service/src/main/resources/",
+        "privKeyPath": "../Service/src/main/resources/"
     }
 ]
