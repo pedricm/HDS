@@ -450,9 +450,9 @@ public class NodeService implements UDPService {
                                             MessageFormat.format("{0} - Received IGNORE message from {1}",
                                                     config.getId(), message.getSenderId()));
                                 // case append para iniciar consensus que vem do client
-                                /*case APPEND ->
-                                    verficar Ds client e msg valida?
-                                    startConsensus(((ConsensusMessage) message).getMessage());*/
+                                case APPEND ->
+                                    //verficar Ds client e msg valida?
+                                    startConsensus(((ConsensusMessage) message).getMessage());
                                 /*
                                 * QUANDO receber append e nao for o lider da instancia guardar para ver o tempo que o lider demora depois de receber uma segunda confirmacao do client?? ou algo do genero
                                 * Ver se e ness alguem comecar uma nova round se o client fizer split brain
