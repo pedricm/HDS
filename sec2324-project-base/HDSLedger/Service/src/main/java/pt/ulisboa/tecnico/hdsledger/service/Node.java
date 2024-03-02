@@ -26,12 +26,18 @@ public class Node {
 
             // Create configuration instances
             ProcessConfig[] nodeConfigs = new ProcessConfigBuilder().fromFile(nodesConfigPath);
+            /*nodeConfigs = Arrays.stream(nodeConfigs)
+                    .filter(config -> !config.isClient())
+                    .toArray(ProcessConfig[]::new);
+            ProcessConfig[] clientConfigs = Arrays.stream(nodeConfigs)
+                    .filter(ProcessConfig::isClient)
+                    .toArray(ProcessConfig[]::new);*/
             ProcessConfig leaderConfig = Arrays.stream(nodeConfigs).filter(ProcessConfig::isLeader).findAny().get();
             ProcessConfig nodeConfig = Arrays.stream(nodeConfigs).filter(c -> c.getId().equals(id)).findAny().get();
 
-            LOGGER.log(Level.INFO, MessageFormat.format("{0} - Running at {1}:{2}; is leader: {3}",
+            LOGGER.log(Level.INFO, MessageFormat.format("{0} - Running at {1}:{2}; is leader: {3}; is client; {4}",
                     nodeConfig.getId(), nodeConfig.getHostname(), nodeConfig.getPort(),
-                    nodeConfig.isLeader()));
+                    nodeConfig.isLeader(), nodeConfig.isClient()));
 
             // Abstraction to send and receive messages
             Link linkToNodes = new Link(nodeConfig, nodeConfig.getPort(), nodeConfigs,
