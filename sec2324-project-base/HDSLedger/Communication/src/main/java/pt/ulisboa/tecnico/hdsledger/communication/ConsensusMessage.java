@@ -15,22 +15,36 @@ public class ConsensusMessage extends Message {
     private int replyToMessageId;
     // Message (PREPREPARE, PREPARE, COMMIT)
     private String message;
+
+    // Client message
+    private ConsensusMessage client;
     // Digital Signature (Base64)
     private String DS;
 
     public ConsensusMessage(String senderId, Type type) {
         super(senderId, type);
     }
+
+    public ConsensusMessage getClient() {
+        return client;
+    }
+
+    public void setClient(ConsensusMessage client) {
+        this.client = client;
+    }
+
     public String getDS() {
         return DS;
     }
     public void setDS(String keysPath) {
         this.DS = null;
+        if(this.getSenderId() == null) return;
         this.DS = CryptoLibrary.CreateDS(this, keysPath + this.getSenderId() + ".priv");
     }
     public Boolean checkDS(String keypath) {
         String DScopy = this.DS;
         this.DS = null;
+        if(this.getSenderId() == null) return false;
         Boolean check = CryptoLibrary.Check(this, DScopy, keypath + this.getSenderId() + ".priv");
         this.DS = DScopy;
         return check;
