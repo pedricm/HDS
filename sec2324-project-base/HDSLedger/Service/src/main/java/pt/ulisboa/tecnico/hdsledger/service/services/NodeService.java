@@ -53,14 +53,16 @@ public class NodeService implements UDPService {
     // Ledger (for now, just a list of strings)
     private ArrayList<String> ledger = new ArrayList<String>();
 
+    private String keysPath;
+
     public NodeService(Link link, ProcessConfig config,
-            ProcessConfig leaderConfig, ProcessConfig[] nodesConfig) {
+            ProcessConfig leaderConfig, ProcessConfig[] nodesConfig, String keysPath) {
 
         this.link = link;
         this.config = config;
         this.leaderConfig = leaderConfig;
         this.nodesConfig = nodesConfig;
-
+        this.keysPath = keysPath;
         this.prepareMessages = new MessageBucket(nodesConfig.length);
         this.commitMessages = new MessageBucket(nodesConfig.length);
     }
@@ -88,6 +90,7 @@ public class NodeService implements UDPService {
                 .setConsensusInstance(instance)
                 .setRound(round)
                 .setMessage(prePrepareMessage.toJson())
+                .setDS(keysPath)
                 .build();
 
         return consensusMessage;
@@ -101,7 +104,10 @@ public class NodeService implements UDPService {
      * @param inputValue Value to value agreed upon
      */
     public void startConsensus(String value) {
-
+        /*
+        *  Check msg DS and check if valid string
+        *  TODO
+        * */
         // Set initial consensus values
         int localConsensusInstance = this.consensusInstance.incrementAndGet();
         InstanceInfo existingConsensus = this.instanceInfo.put(localConsensusInstance, new InstanceInfo(value));
@@ -147,7 +153,17 @@ public class NodeService implements UDPService {
         int round = message.getRound();
         String senderId = message.getSenderId();
         int senderMessageId = message.getMessageId();
-
+        /*
+         *  Check msg DS
+         *
+         * */
+        if (!message.checkDS(this.keysPath)) {
+            LOGGER.log(Level.INFO,
+                    MessageFormat.format(
+                            "{0} - Received PRE-PREPARE message from {1} Consensus Instance {2}, Round {3} with faulty DS",
+                            config.getId(), senderId, consensusInstance, round));
+            return;
+        }
         PrePrepareMessage prePrepareMessage = message.deserializePrePrepareMessage();
 
         String value = prePrepareMessage.getValue();
@@ -162,6 +178,13 @@ public class NodeService implements UDPService {
             return;
 
         // Set instance value
+        /*
+         *  We cant trust the leader we have to check the value first
+         *  EX: we can check if the value is equal to the value received by us from the client (this if the client sends to a quorum)
+         *  Check if DS the same for exemple (implies that leader sends the DS of the clients message) (and that we store clients messages until verified at least)
+         *  pode ser feito com o lider a mandar a msg inteira do client que assim confirmamos nos a DS
+         *  TODO
+         * */
         this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(value));
 
         // Within an instance of the algorithm, each upon rule is triggered at most once
@@ -183,6 +206,7 @@ public class NodeService implements UDPService {
                 .setMessage(prepareMessage.toJson())
                 .setReplyTo(senderId)
                 .setReplyToMessageId(senderMessageId)
+                .setDS(keysPath)
                 .build();
 
         this.link.broadcast(consensusMessage);
@@ -198,7 +222,17 @@ public class NodeService implements UDPService {
         int consensusInstance = message.getConsensusInstance();
         int round = message.getRound();
         String senderId = message.getSenderId();
-
+        /*
+         *  Check msg DS
+         *
+         * */
+        if (!message.checkDS(this.keysPath)) {
+            LOGGER.log(Level.INFO,
+                    MessageFormat.format(
+                            "{0} - Received PREPARE message from {1}: Consensus Instance {2}, Round {3} with faulty DS",
+                            config.getId(), senderId, consensusInstance, round));
+            return;
+        }
         PrepareMessage prepareMessage = message.deserializePrepareMessage();
 
         String value = prepareMessage.getValue();
@@ -212,6 +246,25 @@ public class NodeService implements UDPService {
         prepareMessages.addMessage(message);
 
         // Set instance values
+        /*
+         *  isto so interessa se nao existe o instance info ainda
+         *
+         *  We cant accept first prepare with this value we have to have a quorum of those (maybe init with null)
+         *  - also can do the same check as the preprepare one (this prob does not work, someone can forge a msg that has a real msg from client but not the one being used now)
+         *      - para isto funcionar precisavamos de receber a msg preprepare do lider, extra à msg do prepare tambem 
+         *        com isso podiamos confirmar que o lider mandou
+         * (if it does not hold, we can ignore or wait for a quorum of this value) 
+         *  SEE BETTER
+         *  if we received preprepare we dont have this problem, already checked
+         *
+         *  RESUMINDO:
+         *  - receber prepare com : cenas normais + msg do preprepare vindo do lider + msg do append do client
+         *      - confirmar, se o lider é o suposto e se o client realmente enviou isto
+         *
+         *  CRIAR COM VALUE A NULL
+         *
+         *  TODO
+         * */
         this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(value));
         InstanceInfo instance = this.instanceInfo.get(consensusInstance);
 
@@ -232,6 +285,7 @@ public class NodeService implements UDPService {
                     .setReplyTo(senderId)
                     .setReplyToMessageId(message.getMessageId())
                     .setMessage(instance.getCommitMessage().toJson())
+                    .setDS(keysPath)
                     .build();
 
             link.send(senderId, m);
@@ -258,6 +312,7 @@ public class NodeService implements UDPService {
                         .setReplyTo(senderMessage.getSenderId())
                         .setReplyToMessageId(senderMessage.getMessageId())
                         .setMessage(c.toJson())
+                        .setDS(keysPath)
                         .build();
 
                 link.send(senderMessage.getSenderId(), m);
@@ -277,6 +332,16 @@ public class NodeService implements UDPService {
         int consensusInstance = message.getConsensusInstance();
         int round = message.getRound();
 
+        /*
+         *  Check msg DS
+         *
+         * */
+        if (!message.checkDS(this.keysPath)) {
+            LOGGER.log(Level.INFO,
+                    MessageFormat.format("{0} - Received COMMIT message from {1}: Consensus Instance {2}, Round {3} with faulty DS",
+                            config.getId(), message.getSenderId(), consensusInstance, round));
+            return;
+        }
         LOGGER.log(Level.INFO,
                 MessageFormat.format("{0} - Received COMMIT message from {1}: Consensus Instance {2}, Round {3}",
                         config.getId(), message.getSenderId(), consensusInstance, round));
@@ -305,7 +370,10 @@ public class NodeService implements UDPService {
 
         Optional<String> commitValue = commitMessages.hasValidCommitQuorum(config.getId(),
                 consensusInstance, round);
-
+        /*
+        * Ver se existe prob em 2 mensagens chegarem ao mesmo tempo ambas entravam no if nao?
+        * ASK
+        * */
         if (commitValue.isPresent() && instance.getCommittedRound() < round) {
 
             instance = this.instanceInfo.get(consensusInstance);
@@ -329,7 +397,15 @@ public class NodeService implements UDPService {
                             "{0} - Current Ledger: {1}",
                             config.getId(), String.join("", ledger)));
             }
-
+            /*
+            * se nao participares numa instancia isto vai ficar desasado
+            *
+            * vai ser resolvido com o timeout the round change + o pi has decided function
+            *
+            * Fazer uma round de ver em que instance se esta (nao)
+            *
+            * TODO
+            * */
             lastDecidedConsensusInstance.getAndIncrement();
 
             LOGGER.log(Level.INFO,
@@ -373,7 +449,17 @@ public class NodeService implements UDPService {
                                     LOGGER.log(Level.INFO,
                                             MessageFormat.format("{0} - Received IGNORE message from {1}",
                                                     config.getId(), message.getSenderId()));
-
+                                // case append para iniciar consensus que vem do client
+                                /*case APPEND ->
+                                    verficar Ds client e msg valida?
+                                    startConsensus(((ConsensusMessage) message).getMessage());*/
+                                /*
+                                * QUANDO receber append e nao for o lider da instancia guardar para ver o tempo que o lider demora depois de receber uma segunda confirmacao do client?? ou algo do genero
+                                * Ver se e ness alguem comecar uma nova round se o client fizer split brain
+                                *   - a instancia vai fazer o que o lider recebeu (OK)
+                                *   - mas os que receberam diferente podem querer mudar depois
+                                * TODO REVER
+                                * */
                                 default ->
                                     LOGGER.log(Level.INFO,
                                             MessageFormat.format("{0} - Received unknown message from {1}",
