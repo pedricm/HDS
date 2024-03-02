@@ -25,13 +25,13 @@ public class Node {
             nodesConfigPath += args[1];
 
             // Create configuration instances
-            ProcessConfig[] nodeConfigs = new ProcessConfigBuilder().fromFile(nodesConfigPath);
-            /*nodeConfigs = Arrays.stream(nodeConfigs)
+            ProcessConfig[] configs = new ProcessConfigBuilder().fromFile(nodesConfigPath);
+            ProcessConfig[] nodeConfigs = Arrays.stream(configs)
                     .filter(config -> !config.isClient())
                     .toArray(ProcessConfig[]::new);
-            ProcessConfig[] clientConfigs = Arrays.stream(nodeConfigs)
+            ProcessConfig[] clientConfigs = Arrays.stream(configs)
                     .filter(ProcessConfig::isClient)
-                    .toArray(ProcessConfig[]::new);*/
+                    .toArray(ProcessConfig[]::new);
             ProcessConfig leaderConfig = Arrays.stream(nodeConfigs).filter(ProcessConfig::isLeader).findAny().get();
             ProcessConfig nodeConfig = Arrays.stream(nodeConfigs).filter(c -> c.getId().equals(id)).findAny().get();
 
@@ -40,7 +40,7 @@ public class Node {
                     nodeConfig.isLeader(), nodeConfig.isClient()));
 
             // Abstraction to send and receive messages
-            Link linkToNodes = new Link(nodeConfig, nodeConfig.getPort(), nodeConfigs,
+            Link linkToNodes = new Link(nodeConfig, nodeConfig.getPort(), nodeConfigs, clientConfigs,
                     ConsensusMessage.class);
 
             // Services that implement listen from UDPService
