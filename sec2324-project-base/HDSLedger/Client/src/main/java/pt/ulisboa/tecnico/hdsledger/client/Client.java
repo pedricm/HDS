@@ -11,19 +11,5 @@ public class Client {
     public void send(String command) {
         System.out.println("Sending command to the library: " + command);
         clientLibrary.send(command);
-
-        new Thread(() -> {
-            Message message = null;
-            while (message == null) {
-                message = receive();
-            }
-        }).start();
-    }
-
-    public Message receive() {
-        Message message = this.clientLibrary.receive();
-        System.out.println("Node with ID: " + message.getSenderId() + " sent " + message.getType() + " for message: "
-            + message.getMessageId());
-        return message;
     }
 }

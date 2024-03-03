@@ -31,13 +31,20 @@ public class ClientLibrary {
 
         //PrepareMessage prepareMessage = new PrepareMessage(prePrepareMessage.getValue());
 
-        //ClientMessage clientMessage = new ClientMessageBuilder(nodeConfig.getId(), Message.Type.APPEND).setMessage(msg).setReplyTo(nodeConfig.getId()).setReplyToMessageId(0).build();
         ConsensusMessage consensusMessage = new ConsensusMessageBuilder(nodeConfig.getId(), Message.Type.APPEND)
                 .setMessage(msg).setReplyTo(nodeConfig.getId())
                 .setReplyToMessageId(0)
                 .setDS(nodeKeysPath)
                 .build();
+
         this.link.send(leaderConfig.getId(), consensusMessage);
+
+        new Thread(() -> {
+            Message message = null;
+            while (message == null) {
+                message = receive();
+            }
+        }).start();
     }
 
     public Message receive() {
