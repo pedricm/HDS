@@ -37,7 +37,7 @@ public class Main {
                         ClientConfig.isLeader()));
 
                 // Abstraction to send and receive messages
-                Link linkToNodes = new Link(ClientConfig, ClientConfig.getPort(), nodeConfigs,
+                Link linkToNodes = new Link(ClientConfig, ClientConfig.getPort(), nodeConfigs, clientConfigs,
                         ConsensusMessage.class);
 
                 Client client = new Client(linkToNodes, ClientConfig, leaderConfig, nodeConfigs); //ipServer, portServer, privateClientKeyPath, publicClientKeyPath, privateClient2KeyPath, publicClient2KeyPath, publicServerKeyPath

@@ -24,6 +24,8 @@ public class Link {
     private final DatagramSocket socket;
     // Map of all nodes in the network
     private final Map<String, ProcessConfig> nodes = new ConcurrentHashMap<>();
+    // Map of all clients in the network
+    private final Map<String, ProcessConfig> clients = new ConcurrentHashMap<>();
     // Reference to the node itself
     private final ProcessConfig config;
     // Class to deserialize messages to
@@ -37,11 +39,11 @@ public class Link {
     // Send messages to self by pushing to queue instead of through the network
     private final Queue<Message> localhostQueue = new ConcurrentLinkedQueue<>();
 
-    public Link(ProcessConfig self, int port, ProcessConfig[] nodes, Class<? extends Message> messageClass) {
-        this(self, port, nodes, messageClass, false, 200);
+    public Link(ProcessConfig self, int port, ProcessConfig[] nodes, ProcessConfig[] clients, Class<? extends Message> messageClass) {
+        this(self, port, nodes, clients, messageClass, false, 200);
     }
 
-    public Link(ProcessConfig self, int port, ProcessConfig[] nodes, Class<? extends Message> messageClass,
+    public Link(ProcessConfig self, int port, ProcessConfig[] nodes, ProcessConfig[] clients, Class<? extends Message> messageClass,
             boolean activateLogs, int baseSleepTime) {
 
         this.config = self;
@@ -51,6 +53,11 @@ public class Link {
         Arrays.stream(nodes).forEach(node -> {
             String id = node.getId();
             this.nodes.put(id, node);
+            receivedMessages.put(id, new CollapsingSet());
+        });
+        Arrays.stream(clients).forEach(client -> {
+            String id = client.getId();
+            this.clients.put(id, client);
             receivedMessages.put(id, new CollapsingSet());
         });
 
@@ -192,7 +199,7 @@ public class Link {
         String senderId = message.getSenderId();
         int messageId = message.getMessageId();
 
-        if (!nodes.containsKey(senderId))
+        if (!nodes.containsKey(senderId) && !clients.containsKey(senderId))
             throw new HDSSException(ErrorMessage.NoSuchNode);
 
         // Handle ACKS, since it's possible to receive multiple acks from the same

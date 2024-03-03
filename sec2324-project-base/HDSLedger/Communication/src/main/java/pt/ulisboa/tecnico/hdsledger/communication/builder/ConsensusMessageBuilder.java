@@ -9,7 +9,10 @@ public class ConsensusMessageBuilder {
     public ConsensusMessageBuilder(String sender, Message.Type type) {
         instance = new ConsensusMessage(sender, type);
     }
-
+    public ConsensusMessageBuilder setClient(ConsensusMessage consensusMessage) {
+        instance.setClient(consensusMessage);
+        return this;
+    }
     public ConsensusMessageBuilder setDS(String keysPath) {
         instance.setDS(keysPath);
         return this;

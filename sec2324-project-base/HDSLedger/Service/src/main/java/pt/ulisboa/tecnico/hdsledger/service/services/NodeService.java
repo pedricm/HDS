@@ -19,6 +19,7 @@ import pt.ulisboa.tecnico.hdsledger.communication.PrepareMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.builder.ConsensusMessageBuilder;
 import pt.ulisboa.tecnico.hdsledger.service.models.InstanceInfo;
 import pt.ulisboa.tecnico.hdsledger.service.models.MessageBucket;
+import pt.ulisboa.tecnico.hdsledger.service.models.ClientRepository;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
 
@@ -55,6 +56,7 @@ public class NodeService implements UDPService {
 
     private String keysPath;
 
+    private ClientRepository clientRepository = new ClientRepository();
     public NodeService(Link link, ProcessConfig config,
             ProcessConfig leaderConfig, ProcessConfig[] nodesConfig, String keysPath) {
 
@@ -83,13 +85,14 @@ public class NodeService implements UDPService {
         return this.leaderConfig.getId().equals(id);
     }
  
-    public ConsensusMessage createConsensusMessage(String value, int instance, int round) {
+    public ConsensusMessage createConsensusMessage(ConsensusMessage clientMessage, String value, int instance, int round) {
         PrePrepareMessage prePrepareMessage = new PrePrepareMessage(value);
 
         ConsensusMessage consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.PRE_PREPARE)
                 .setConsensusInstance(instance)
                 .setRound(round)
                 .setMessage(prePrepareMessage.toJson())
+                .setClient(clientMessage)
                 .setDS(keysPath)
                 .build();
 
@@ -103,12 +106,29 @@ public class NodeService implements UDPService {
      *
      * @param inputValue Value to value agreed upon
      */
-    public void startConsensus(String value) {
+    public void startConsensus(ConsensusMessage message) {
         /*
         *  Check msg DS and check if valid string
         *  TODO
         * */
+        if (!message.checkDS(this.keysPath)) {
+            LOGGER.log(Level.INFO,
+                    MessageFormat.format(
+                            "{0} - Received APPEND message from {1} with faulty DS",
+                            config.getId(), message.getSenderId()));
+            return;
+        }
+        // veri also if it is a client TODO
+        /*if (clientRepository.checkIfDone(message.getSenderId(), message.getMessageId())){
+            LOGGER.log(Level.INFO,
+                    MessageFormat.format(
+                            "{0} - Received APPEND message from {1} with a messageId already used",
+                            config.getId(), message.getSenderId()));
+            return;
+        }*/
+
         // Set initial consensus values
+        String value = message.getMessage();
         int localConsensusInstance = this.consensusInstance.incrementAndGet();
         InstanceInfo existingConsensus = this.instanceInfo.put(localConsensusInstance, new InstanceInfo(value));
 
@@ -128,13 +148,22 @@ public class NodeService implements UDPService {
                 e.printStackTrace();
             }
         }
+        /*if (clientRepository.checkIfDone(message.getSenderId(), message.getMessageId())){
+            // change after, esta assim porque queremos ignorar se chegar paralelo enquanto so tem 1 lider e nao tem mudanca
+            lastDecidedConsensusInstance.getAndIncrement();
+            LOGGER.log(Level.INFO,
+                    MessageFormat.format(
+                            "{0} - Received APPEND message from {1} with a messageId already used",
+                            config.getId(), message.getSenderId()));
+            return;
+        }*/
 
         // Leader broadcasts PRE-PREPARE message
         if (this.config.isLeader()) {
             InstanceInfo instance = this.instanceInfo.get(localConsensusInstance);
             LOGGER.log(Level.INFO,
                 MessageFormat.format("{0} - Node is leader, sending PRE-PREPARE message", config.getId()));
-            this.link.broadcast(this.createConsensusMessage(value, localConsensusInstance, instance.getCurrentRound()));
+            this.link.broadcast(this.createConsensusMessage(message, value, localConsensusInstance, instance.getCurrentRound()));
         } else {
             LOGGER.log(Level.INFO,
                     MessageFormat.format("{0} - Node is not leader, waiting for PRE-PREPARE message", config.getId()));
@@ -161,6 +190,20 @@ public class NodeService implements UDPService {
             LOGGER.log(Level.INFO,
                     MessageFormat.format(
                             "{0} - Received PRE-PREPARE message from {1} Consensus Instance {2}, Round {3} with faulty DS",
+                            config.getId(), senderId, consensusInstance, round));
+            return;
+        }
+        /*if (clientRepository.checkIfDone(message.getClient().getSenderId(), message.getClient().getMessageId())){
+            LOGGER.log(Level.INFO,
+                    MessageFormat.format(
+                            "{0} - Received PRE-PREPARE message from {1} Consensus Instance {2}, Round {3} with repeated messageId",
+                            config.getId(), senderId, consensusInstance, round));
+            return;
+        }*/
+        if (!message.getClient().checkDS(this.keysPath)) {
+            LOGGER.log(Level.INFO,
+                    MessageFormat.format(
+                            "{0} - Received PRE-PREPARE message from {1} Consensus Instance {2}, Round {3} with faulty DS of client message",
                             config.getId(), senderId, consensusInstance, round));
             return;
         }
@@ -206,6 +249,7 @@ public class NodeService implements UDPService {
                 .setMessage(prepareMessage.toJson())
                 .setReplyTo(senderId)
                 .setReplyToMessageId(senderMessageId)
+                .setClient(message.getClient())
                 .setDS(keysPath)
                 .build();
 
@@ -285,6 +329,7 @@ public class NodeService implements UDPService {
                     .setReplyTo(senderId)
                     .setReplyToMessageId(message.getMessageId())
                     .setMessage(instance.getCommitMessage().toJson())
+                    .setClient(message.getClient())
                     .setDS(keysPath)
                     .build();
 
@@ -312,6 +357,7 @@ public class NodeService implements UDPService {
                         .setReplyTo(senderMessage.getSenderId())
                         .setReplyToMessageId(senderMessage.getMessageId())
                         .setMessage(c.toJson())
+                        .setClient(message.getClient())
                         .setDS(keysPath)
                         .build();
 
@@ -407,6 +453,8 @@ public class NodeService implements UDPService {
             * TODO
             * */
             lastDecidedConsensusInstance.getAndIncrement();
+            // TODO - tem de se ter f+1 ds iguais para se fazer isso?
+            //clientRepository.messageDone(message.getClient().getSenderId(), message.getClient().getMessageId());
 
             LOGGER.log(Level.INFO,
                     MessageFormat.format(
@@ -451,8 +499,7 @@ public class NodeService implements UDPService {
                                                     config.getId(), message.getSenderId()));
                                 // case append para iniciar consensus que vem do client
                                 case APPEND ->
-                                    //verficar Ds client e msg valida?
-                                    startConsensus(((ConsensusMessage) message).getMessage());
+                                    startConsensus((ConsensusMessage) message);
                                 /*
                                 * QUANDO receber append e nao for o lider da instancia guardar para ver o tempo que o lider demora depois de receber uma segunda confirmacao do client?? ou algo do genero
                                 * Ver se e ness alguem comecar uma nova round se o client fizer split brain
