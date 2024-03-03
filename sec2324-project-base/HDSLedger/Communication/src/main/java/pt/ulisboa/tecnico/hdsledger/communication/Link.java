@@ -99,8 +99,11 @@ public class Link {
         new Thread(() -> {
             try {
                 ProcessConfig node = nodes.get(nodeId);
-                if (node == null)
-                    throw new HDSSException(ErrorMessage.NoSuchNode);
+                if (node == null) {
+                    node = clients.get(nodeId);
+                    if (node == null)
+                        throw new HDSSException(ErrorMessage.NoSuchNode);
+                }
 
                 data.setMessageId(messageCounter.getAndIncrement());
 

@@ -40,13 +40,13 @@ public class ConsensusMessage extends Message {
         this.DS = null;
 
         if(this.getSenderId() == null) return;
-        this.DS = CryptoLibrary.CreateDS(this, keysPath + "keys/key_" + this.getSenderId() + "_priv.key");
+        this.DS = CryptoLibrary.CreateDS(this, keysPath + "key_" + this.getSenderId() + "_priv.key");
     }
     public Boolean checkDS(String keypath) {
         String DScopy = this.DS;
         this.DS = null;
         if(this.getSenderId() == null) return false;
-        Boolean check = CryptoLibrary.Check(this, DScopy, keypath + "keys/key_" + this.getSenderId() + "_pub.key");
+        Boolean check = CryptoLibrary.Check(this, DScopy, keypath + "key_" + this.getSenderId() + "_pub.key");
         this.DS = DScopy;
         return check;
     }

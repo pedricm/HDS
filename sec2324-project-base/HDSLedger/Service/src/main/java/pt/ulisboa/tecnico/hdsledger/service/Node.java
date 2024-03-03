@@ -16,6 +16,7 @@ public class Node {
     private static final CustomLogger LOGGER = new CustomLogger(Node.class.getName());
     // Hardcoded path to files
     private static String nodesConfigPath = "src/main/resources/";
+    private static String keysPath = "src/main/resources/keys/";
 
     public static void main(String[] args) {
 
@@ -45,7 +46,7 @@ public class Node {
 
             // Services that implement listen from UDPService
             NodeService nodeService = new NodeService(linkToNodes, nodeConfig, leaderConfig,
-                    nodeConfigs, nodesConfigPath);
+                    nodeConfigs, keysPath);
 
             nodeService.listen();
 

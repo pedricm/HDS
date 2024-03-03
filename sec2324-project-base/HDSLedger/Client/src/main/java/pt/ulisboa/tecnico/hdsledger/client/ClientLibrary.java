@@ -17,7 +17,7 @@ public class ClientLibrary {
     private ProcessConfig leaderConfig;
     private ProcessConfig[] nodeConfigs;
 
-    private static String nodeKeysPath = "../Service/src/main/resources/";
+    private static String nodeKeysPath = "../Service/src/main/resources/keys/";
 
     public ClientLibrary(Link linkToNodes, ProcessConfig config, ProcessConfig leaderConf, ProcessConfig[] nodesConfig) {
         this.link = linkToNodes;
@@ -32,7 +32,8 @@ public class ClientLibrary {
         //PrepareMessage prepareMessage = new PrepareMessage(prePrepareMessage.getValue());
 
         ConsensusMessage consensusMessage = new ConsensusMessageBuilder(nodeConfig.getId(), Message.Type.APPEND)
-                .setMessage(msg).setReplyTo(nodeConfig.getId())
+                .setMessage(msg)
+                .setReplyTo(leaderConfig.getId())
                 .setReplyToMessageId(0)
                 .setDS(nodeKeysPath)
                 .build();
