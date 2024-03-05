@@ -43,6 +43,8 @@ public class NodeService implements UDPService {
     private final MessageBucket prepareMessages;
     // Consensus instance -> Round -> List of commit messages
     private final MessageBucket commitMessages;
+    // Consensus instance -> Round -> List of round changes messages
+    private final MessageBucket roundchangeMessages;
 
     // Store if already received pre-prepare for a given <consensus, round>
     private final Map<Integer, Map<Integer, Boolean>> receivedPrePrepare = new ConcurrentHashMap<>();
@@ -67,6 +69,7 @@ public class NodeService implements UDPService {
         this.keysPath = keysPath;
         this.prepareMessages = new MessageBucket(nodesConfig.length);
         this.commitMessages = new MessageBucket(nodesConfig.length);
+        this.roundchangeMessages = new MessageBucket(nodesConfig.length);
     }
     public String getLeader(int instance, int round) {
         int N = nodesConfig.length;
@@ -484,6 +487,66 @@ public class NodeService implements UDPService {
         }
     }
     public synchronized void uponRoundChange(ConsensusMessage message) {
+        int consensusInstance = message.getConsensusInstance();
+        int round = message.getRound();
+
+        /*
+         *  Check msg DS
+         *
+         * */
+        if (!message.checkDS(this.keysPath)) {
+            LOGGER.log(Level.INFO,
+                    MessageFormat.format("{0} - Received ROUND_CHANGE message from {1}: Consensus Instance {2}, Round {3} with faulty DS",
+                            config.getId(), message.getSenderId(), consensusInstance, round));
+            return;
+        }
+        LOGGER.log(Level.INFO,
+                MessageFormat.format("{0} - Received ROUND_CHANGE message from {1}: Consensus Instance {2}, Round {3}",
+                        config.getId(), message.getSenderId(), consensusInstance, round));
+
+        roundchangeMessages.addMessage(message);
+
+        /*if (this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(value)) == null) { //Perguntar
+            //this.instanceInfo.get(consensusInstance).setTimer(createTimerTask(consensusInstance));
+        }*/
+        InstanceInfo instance = this.instanceInfo.get(consensusInstance);
+
+        /*
+        * TODO
+        *  Se nós já decidimos esta ronda:
+        *  Mandamos o quorum de commits para o sender
+        * */
+        if (instance.getCommittedRound() >= round) {
+            LOGGER.log(Level.INFO,
+                    MessageFormat.format(
+                            "{0} - Already COMMITED for Consensus Instance {1}, Round {2}, ignoring",
+                            config.getId(), consensusInstance, round));
+            //Send the quorum of commits to the sender
+            return;
+        }
+
+        //If we are the leader (for the next round)
+        Optional<Integer> roundChange = roundchangeMessages.hasValidRoundChangeQuorum(config.getId(), consensusInstance, round);
+        /*if (this.isLeader(localConsensusInstance, instance.getCurrentRound(), this.config.getId()) && roundChange.isPresent() && instance.getPreparedRound() < round) {
+            /*
+            * We need to know the highest prepared round
+            * Compare the highest prepared round with the lower bound?
+            * - true => we need to change our value is the same as the highest prepared value
+            * - false => value its our input value
+            * Brodadcast pre prepare
+            *
+            //instance.setCurrentRound();
+
+        }*/
+        roundChange = roundchangeMessages.hasRoundChange(config.getId(), consensusInstance, round);
+        if (roundChange.isPresent() && instance.getPreparedRound() < round) {
+            /*
+             * We need to know the lowest prepared round (will be returned in hasRoundChange())
+             * instance.setCurrentRound(); to the lowest round
+             * set the timer
+             * broadcast round change
+             * */
+        }
 
     }
 
@@ -512,6 +575,8 @@ public class NodeService implements UDPService {
                                 case COMMIT ->
                                     uponCommit((ConsensusMessage) message);
 
+                                case ROUND_CHANGE ->
+                                    uponRoundChange((ConsensusMessage) message);
 
                                 case ACK ->
                                     LOGGER.log(Level.INFO, MessageFormat.format("{0} - Received ACK message from {1}",
