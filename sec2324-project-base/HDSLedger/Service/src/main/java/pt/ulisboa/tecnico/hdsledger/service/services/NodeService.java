@@ -298,7 +298,7 @@ public class NodeService implements UDPService {
             LOGGER.log(Level.INFO,
                     MessageFormat.format(
                             "{0} - Received PRE-PREPARE message from {1} Consensus Instance {2}, Round {3} with faulty DS of client message",
-                            config.getId(), senderId, consensusInstanceMessage, round));
+                            config.getId(), senderId, consensusInstance, round));
             return;
         }
 
