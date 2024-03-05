@@ -35,7 +35,7 @@ public class ClientLibrary {
                 .setMessage(msg)
                 .build();
 
-        this.link.send(leaderConfig.getId(), consensusMessage);
+        this.link.broadcast(consensusMessage);
 
         new Thread(() -> {
             Message message = null;
