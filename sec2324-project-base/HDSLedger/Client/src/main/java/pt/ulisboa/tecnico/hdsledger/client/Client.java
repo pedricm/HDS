@@ -1,5 +1,6 @@
 package pt.ulisboa.tecnico.hdsledger.client;
 import pt.ulisboa.tecnico.hdsledger.communication.Link;
+import pt.ulisboa.tecnico.hdsledger.communication.Message;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
 
 public class Client {

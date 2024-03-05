@@ -39,6 +39,8 @@ public class Link {
     // Send messages to self by pushing to queue instead of through the network
     private final Queue<Message> localhostQueue = new ConcurrentLinkedQueue<>();
 
+    private static String keysPath = "src/main/resources/keys/";
+
     public Link(ProcessConfig self, int port, ProcessConfig[] nodes, ProcessConfig[] clients, Class<? extends Message> messageClass) {
         this(self, port, nodes, clients, messageClass, false, 200);
     }
@@ -99,10 +101,14 @@ public class Link {
         new Thread(() -> {
             try {
                 ProcessConfig node = nodes.get(nodeId);
-                if (node == null)
-                    throw new HDSSException(ErrorMessage.NoSuchNode);
+                if (node == null) {
+                    node = clients.get(nodeId);
+                    if (node == null)
+                        throw new HDSSException(ErrorMessage.NoSuchNode);
+                }
 
                 data.setMessageId(messageCounter.getAndIncrement());
+                ((ConsensusMessage) data).setDS(keysPath);
 
                 // If the message is not ACK, it will be resent
                 InetAddress destAddress = InetAddress.getByName(node.getHostname());

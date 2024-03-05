@@ -93,7 +93,6 @@ public class NodeService implements UDPService {
                 .setRound(round)
                 .setMessage(prePrepareMessage.toJson())
                 .setClient(clientMessage)
-                .setDS(keysPath)
                 .build();
 
         return consensusMessage;
@@ -250,7 +249,6 @@ public class NodeService implements UDPService {
                 .setReplyTo(senderId)
                 .setReplyToMessageId(senderMessageId)
                 .setClient(message.getClient())
-                .setDS(keysPath)
                 .build();
 
         this.link.broadcast(consensusMessage);
@@ -330,7 +328,6 @@ public class NodeService implements UDPService {
                     .setReplyToMessageId(message.getMessageId())
                     .setMessage(instance.getCommitMessage().toJson())
                     .setClient(message.getClient())
-                    .setDS(keysPath)
                     .build();
 
             link.send(senderId, m);
@@ -358,7 +355,6 @@ public class NodeService implements UDPService {
                         .setReplyToMessageId(senderMessage.getMessageId())
                         .setMessage(c.toJson())
                         .setClient(message.getClient())
-                        .setDS(keysPath)
                         .build();
 
                 link.send(senderMessage.getSenderId(), m);

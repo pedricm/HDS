@@ -38,14 +38,15 @@ public class ConsensusMessage extends Message {
     }
     public void setDS(String keysPath) {
         this.DS = null;
+
         if(this.getSenderId() == null) return;
-        this.DS = CryptoLibrary.CreateDS(this, keysPath + this.getSenderId() + ".priv");
+        this.DS = CryptoLibrary.CreateDS(this, keysPath + "key_" + this.getSenderId() + "_priv.key");
     }
     public Boolean checkDS(String keypath) {
         String DScopy = this.DS;
         this.DS = null;
         if(this.getSenderId() == null) return false;
-        Boolean check = CryptoLibrary.Check(this, DScopy, keypath + this.getSenderId() + ".priv");
+        Boolean check = CryptoLibrary.Check(this, DScopy, keypath + "key_" + this.getSenderId() + "_pub.key");
         this.DS = DScopy;
         return check;
     }

@@ -6,6 +6,8 @@ import pt.ulisboa.tecnico.hdsledger.communication.Message;
 import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.builder.ConsensusMessageBuilder;
 
+import java.io.IOException;
+
 
 public class ClientLibrary {
     //private static final CustomLogger LOGGER = new CustomLogger(ClientLibrary.class.getName());
@@ -14,6 +16,8 @@ public class ClientLibrary {
     private ProcessConfig nodeConfig;
     private ProcessConfig leaderConfig;
     private ProcessConfig[] nodeConfigs;
+
+    private static String nodeKeysPath = "../Service/src/main/resources/keys/";
 
     public ClientLibrary(Link linkToNodes, ProcessConfig config, ProcessConfig leaderConf, ProcessConfig[] nodesConfig) {
         this.link = linkToNodes;
@@ -24,10 +28,29 @@ public class ClientLibrary {
 
     public void send(String msg) {
         System.out.println("Sending command: " + msg);
+
         //PrepareMessage prepareMessage = new PrepareMessage(prePrepareMessage.getValue());
 
-        //ClientMessage clientMessage = new ClientMessageBuilder(nodeConfig.getId(), Message.Type.APPEND).setMessage(msg).setReplyTo(nodeConfig.getId()).setReplyToMessageId(0).build();
-        ConsensusMessage consensusMessage = new ConsensusMessageBuilder(nodeConfig.getId(), Message.Type.APPEND).setMessage(msg).setReplyTo(nodeConfig.getId()).setReplyToMessageId(0).build();
-        this.link.broadcast(consensusMessage);
+        ConsensusMessage consensusMessage = new ConsensusMessageBuilder(nodeConfig.getId(), Message.Type.APPEND)
+                .setMessage(msg)
+                .build();
+
+        this.link.send(leaderConfig.getId(), consensusMessage);
+
+        new Thread(() -> {
+            Message message = null;
+            while (message == null) {
+                message = receive();
+            }
+        }).start();
+    }
+
+    public Message receive() {
+        try {
+            return this.link.receive();
+        } catch (IOException | ClassNotFoundException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 }
