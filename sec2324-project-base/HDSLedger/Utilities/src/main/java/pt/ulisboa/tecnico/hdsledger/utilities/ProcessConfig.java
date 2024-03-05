@@ -6,9 +6,6 @@ public class ProcessConfig {
     private boolean isLeader;
     private boolean isClient;
 
-    private String pubKeyPath;
-    private String privKeyPath;
-
     private String hostname;
 
     private String id;
@@ -31,10 +28,4 @@ public class ProcessConfig {
     public String getHostname() {
         return hostname;
     }
-
-    public String getPubKeyPath() { return pubKeyPath; }
-
-    public String getPrivKeyPath() { return privKeyPath; }
-
-
 }
