@@ -31,7 +31,14 @@ public class ConsensusMessageBuilder {
         instance.setRound(round);
         return this;
    }
-
+    public ConsensusMessageBuilder setPreparedRound(int preparedRound) {
+        instance.setPreparedRound(preparedRound);
+        return this;
+    }
+    public ConsensusMessageBuilder setPreparedValue(String preparedValue) {
+        instance.setPreparedValue(preparedValue);
+        return this;
+    }
    public ConsensusMessageBuilder setReplyTo(String replyTo) {
         instance.setReplyTo(replyTo);
         return this;

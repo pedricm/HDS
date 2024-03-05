@@ -12,7 +12,7 @@ public class Message implements Serializable {
     private Type type;
 
     public enum Type {
-        APPEND, PRE_PREPARE, PREPARE, COMMIT, ACK, IGNORE;
+        APPEND, PRE_PREPARE, PREPARE, COMMIT, ACK, IGNORE, ROUND_CHANGE;
     }
 
     public Message(String senderId, Type type) {

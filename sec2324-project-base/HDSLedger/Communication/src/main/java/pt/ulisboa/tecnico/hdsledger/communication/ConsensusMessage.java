@@ -20,9 +20,26 @@ public class ConsensusMessage extends Message {
     private ConsensusMessage client;
     // Digital Signature (Base64)
     private String DS;
+    private int preparedRound = -1;
+    private String preparedValue;
 
     public ConsensusMessage(String senderId, Type type) {
         super(senderId, type);
+    }
+    public int getPreparedRound() {
+        return preparedRound;
+    }
+
+    public void setPreparedRound(int preparedRound) {
+        this.preparedRound = preparedRound;
+    }
+
+    public String getPreparedValue() {
+        return preparedValue;
+    }
+
+    public void setPreparedValue(String preparedValue) {
+        this.preparedValue = preparedValue;
     }
 
     public ConsensusMessage getClient() {

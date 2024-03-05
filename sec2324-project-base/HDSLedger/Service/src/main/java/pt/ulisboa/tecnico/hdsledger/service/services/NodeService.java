@@ -9,6 +9,8 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import pt.ulisboa.tecnico.hdsledger.communication.CommitMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
@@ -22,6 +24,8 @@ import pt.ulisboa.tecnico.hdsledger.service.models.MessageBucket;
 import pt.ulisboa.tecnico.hdsledger.service.models.ClientRepository;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
+import pt.ulisboa.tecnico.hdsledger.utilities.InstanceTimerTask;
+
 
 public class NodeService implements UDPService {
 
@@ -66,7 +70,7 @@ public class NodeService implements UDPService {
     }
     public String getLeader(int instance, int round) {
         int N = nodesConfig.length;
-        return  Integer.toString(((instance + round) % N)-1); // HAS TO BE +1
+        return  Integer.toString(((instance + round) % N)+1); // HAS TO BE +1
     }
     public ProcessConfig getConfig() {
         return this.config;
@@ -96,7 +100,34 @@ public class NodeService implements UDPService {
 
         return consensusMessage;
     }
+    public ConsensusMessage createConsensusMessageRoundChange(int prepRound, String prepValue, int instance, int round) {
 
+        ConsensusMessage consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.ROUND_CHANGE)
+                .setConsensusInstance(instance)
+                .setRound(round)
+                .setPreparedRound(prepRound)
+                .setPreparedValue(prepValue)
+                .build();
+
+        return consensusMessage;
+    }
+    public Timer createTimerTask(int localConsensusInstance){
+        TimerTask task = new InstanceTimerTask(localConsensusInstance) {
+            @Override
+            public void run() {
+                // FIX PARA O CANCEL : se o lastinstance > this.consensusIntance cancelar este timer
+
+                InstanceInfo instance = instanceInfo.get(this.consensusInstanceTimer);
+                if (lastDecidedConsensusInstance.get() >= this.consensusInstanceTimer ) instance.cancelTimer();
+
+                    System.out.println("aaaaaaaaaaaaa "+this.consensusInstanceTimer +" "+ instance.getPreparedRound()+" " +instance.getPreparedValue()+" "+ instance.getCurrentRound());
+                //this.link.broadcast(createConsensusMessageRoundChange(instance.getPreparedRound(), instance.getPreparedValue(), instance.getCurrentRound(), ))
+            }
+        };
+        Timer timer = new Timer();
+        timer.scheduleAtFixedRate(task, 10000, 10000);
+        return timer;
+    }
     /*
      * Start an instance of consensus for a value
      * Only the current leader will start a consensus instance
@@ -156,6 +187,7 @@ public class NodeService implements UDPService {
             return;
         }*/
         InstanceInfo instance = this.instanceInfo.get(localConsensusInstance);
+        instance.setTimer(createTimerTask(localConsensusInstance));
         // Leader broadcasts PRE-PREPARE message
         if (this.isLeader(localConsensusInstance, instance.getCurrentRound(), this.config.getId())) {
             LOGGER.log(Level.INFO,
@@ -229,7 +261,9 @@ public class NodeService implements UDPService {
         if (ii == null && round != 1)
             return;
         // Set instance value
-        this.instanceInfo.putIfAbsent(consensusInstanceMessage, new InstanceInfo(value));
+        if (this.instanceInfo.putIfAbsent(consensusInstanceMessage, new InstanceInfo(value)) == null) {
+            this.instanceInfo.get(consensusInstanceMessage).setTimer(createTimerTask(consensusInstanceMessage));
+        }
 
         // Within an instance of the algorithm, each upon rule is triggered at most once
         // for any round r
@@ -302,8 +336,9 @@ public class NodeService implements UDPService {
             return;
         }
 
-        // value does not matter
-        this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(value));
+        if (this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(value)) == null) {
+            this.instanceInfo.get(consensusInstance).setTimer(createTimerTask(consensusInstance));
+        }
         InstanceInfo instance = this.instanceInfo.get(consensusInstance);
 
         // Within an instance of the algorithm, each upon rule is triggered at most once
@@ -435,16 +470,10 @@ public class NodeService implements UDPService {
                             "{0} - Current Ledger: {1}",
                             config.getId(), String.join("", ledger)));
             }
-            /*
-            * se nao participares numa instancia isto vai ficar desasado
-            *
-            * vai ser resolvido com o timeout the round change + o pi has decided function
-            *
-            * Fazer uma round de ver em que instance se esta (nao)
-            *
-            * TODO
-            * */
+
             lastDecidedConsensusInstance.getAndIncrement();
+            // FIX BUG e possivel alguem nao ter timer e chegar aqui, ver como
+            //instance.cancelTimer();
             // TODO - tem de se ter f+1 ds iguais para se fazer isso?
             //clientRepository.messageDone(message.getClient().getSenderId(), message.getClient().getMessageId());
 
@@ -453,6 +482,9 @@ public class NodeService implements UDPService {
                             "{0} - Decided on Consensus Instance {1}, Round {2}, Successful? {3}",
                             config.getId(), consensusInstance, round, true));
         }
+    }
+    public synchronized void uponRoundChange(ConsensusMessage message) {
+
     }
 
     @Override

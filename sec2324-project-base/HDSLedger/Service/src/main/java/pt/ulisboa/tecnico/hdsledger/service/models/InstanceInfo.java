@@ -2,7 +2,7 @@ package pt.ulisboa.tecnico.hdsledger.service.models;
 
 
 import pt.ulisboa.tecnico.hdsledger.communication.CommitMessage;
-
+import java.util.Timer;
 public class InstanceInfo {
 
     private int currentRound = 1;
@@ -11,11 +11,17 @@ public class InstanceInfo {
     private CommitMessage commitMessage;
     private String inputValue;
     private int committedRound = -1;
+    private Timer timer;
 
     public InstanceInfo(String inputValue) {
         this.inputValue = inputValue;
     }
-
+    public void cancelTimer() {
+        this.timer.cancel();
+    }
+    public void setTimer(Timer timer) {
+        this.timer = timer;
+    }
     public int getCurrentRound() {
         return currentRound;
     }
