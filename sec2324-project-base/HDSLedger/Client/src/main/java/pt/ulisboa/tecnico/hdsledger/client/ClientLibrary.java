@@ -33,9 +33,6 @@ public class ClientLibrary {
 
         ConsensusMessage consensusMessage = new ConsensusMessageBuilder(nodeConfig.getId(), Message.Type.APPEND)
                 .setMessage(msg)
-                .setReplyTo(leaderConfig.getId())
-                .setReplyToMessageId(0)
-                .setDS(nodeKeysPath)
                 .build();
 
         this.link.send(leaderConfig.getId(), consensusMessage);
