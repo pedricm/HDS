@@ -31,8 +31,6 @@ public class NodeService implements UDPService {
 
     // Current node is leader
     private final ProcessConfig config;
-    // Leader configuration
-    private final ProcessConfig leaderConfig;
 
     // Link to communicate with nodes
     private final Link link;
@@ -57,18 +55,19 @@ public class NodeService implements UDPService {
     private String keysPath;
 
     private ClientRepository clientRepository = new ClientRepository();
-    public NodeService(Link link, ProcessConfig config,
-            ProcessConfig leaderConfig, ProcessConfig[] nodesConfig, String keysPath) {
+    public NodeService(Link link, ProcessConfig config, ProcessConfig[] nodesConfig, String keysPath) {
 
         this.link = link;
         this.config = config;
-        this.leaderConfig = leaderConfig;
         this.nodesConfig = nodesConfig;
         this.keysPath = keysPath;
         this.prepareMessages = new MessageBucket(nodesConfig.length);
         this.commitMessages = new MessageBucket(nodesConfig.length);
     }
-
+    public String getLeader(int instance, int round) {
+        int N = nodesConfig.length;
+        return  Integer.toString(((instance + round) % N)-1); // HAS TO BE +1
+    }
     public ProcessConfig getConfig() {
         return this.config;
     }
@@ -81,8 +80,8 @@ public class NodeService implements UDPService {
         return this.ledger;
     }
 
-    private boolean isLeader(String id) {
-        return this.leaderConfig.getId().equals(id);
+    private boolean isLeader(int instance, int round, String id) {
+        return getLeader(instance, round).equals(id);
     }
  
     public ConsensusMessage createConsensusMessage(ConsensusMessage clientMessage, String value, int instance, int round) {
@@ -156,10 +155,9 @@ public class NodeService implements UDPService {
                             config.getId(), message.getSenderId()));
             return;
         }*/
-
+        InstanceInfo instance = this.instanceInfo.get(localConsensusInstance);
         // Leader broadcasts PRE-PREPARE message
-        if (this.config.isLeader()) {
-            InstanceInfo instance = this.instanceInfo.get(localConsensusInstance);
+        if (this.isLeader(localConsensusInstance, instance.getCurrentRound(), this.config.getId())) {
             LOGGER.log(Level.INFO,
                 MessageFormat.format("{0} - Node is leader, sending PRE-PREPARE message", config.getId()));
             this.link.broadcast(this.createConsensusMessage(message, value, localConsensusInstance, instance.getCurrentRound()));
@@ -177,7 +175,7 @@ public class NodeService implements UDPService {
      */
     public void uponPrePrepare(ConsensusMessage message) {
 
-        int consensusInstance = message.getConsensusInstance();
+        int consensusInstanceMessage = message.getConsensusInstance();
         int round = message.getRound();
         String senderId = message.getSenderId();
         int senderMessageId = message.getMessageId();
@@ -189,21 +187,21 @@ public class NodeService implements UDPService {
             LOGGER.log(Level.INFO,
                     MessageFormat.format(
                             "{0} - Received PRE-PREPARE message from {1} Consensus Instance {2}, Round {3} with faulty DS",
-                            config.getId(), senderId, consensusInstance, round));
+                            config.getId(), senderId, consensusInstanceMessage, round));
             return;
         }
         /*if (clientRepository.checkIfDone(message.getClient().getSenderId(), message.getClient().getMessageId())){
             LOGGER.log(Level.INFO,
                     MessageFormat.format(
                             "{0} - Received PRE-PREPARE message from {1} Consensus Instance {2}, Round {3} with repeated messageId",
-                            config.getId(), senderId, consensusInstance, round));
+                            config.getId(), senderId, consensusInstanceMessage, round));
             return;
         }*/
         if (!message.getClient().checkDS(this.keysPath)) {
             LOGGER.log(Level.INFO,
                     MessageFormat.format(
                             "{0} - Received PRE-PREPARE message from {1} Consensus Instance {2}, Round {3} with faulty DS of client message",
-                            config.getId(), senderId, consensusInstance, round));
+                            config.getId(), senderId, consensusInstanceMessage, round));
             return;
         }
         PrePrepareMessage prePrepareMessage = message.deserializePrePrepareMessage();
@@ -213,37 +211,41 @@ public class NodeService implements UDPService {
         LOGGER.log(Level.INFO,
                 MessageFormat.format(
                         "{0} - Received PRE-PREPARE message from {1} Consensus Instance {2}, Round {3}",
-                        config.getId(), senderId, consensusInstance, round));
+                        config.getId(), senderId, consensusInstanceMessage, round));
 
         // Verify if pre-prepare was sent by leader
-        if (!isLeader(senderId))
+        if (!isLeader(consensusInstanceMessage, round, senderId))
             return;
-
-        // Set instance value
         /*
-         *  We cant trust the leader we have to check the value first
-         *  EX: we can check if the value is equal to the value received by us from the client (this if the client sends to a quorum)
-         *  Check if DS the same for exemple (implies that leader sends the DS of the clients message) (and that we store clients messages until verified at least)
-         *  pode ser feito com o lider a mandar a msg inteira do client que assim confirmamos nos a DS
-         *  TODO
+         * Verify also if correct instance if not return?
+         * TODO
          * */
-        this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(value));
+        if (lastDecidedConsensusInstance.get() + 1 != consensusInstanceMessage)
+            return;
+        InstanceInfo ii = this.instanceInfo.get(consensusInstanceMessage);
+
+        if (ii != null && ii.getCurrentRound() != round)
+            return;
+        if (ii == null && round != 1)
+            return;
+        // Set instance value
+        this.instanceInfo.putIfAbsent(consensusInstanceMessage, new InstanceInfo(value));
 
         // Within an instance of the algorithm, each upon rule is triggered at most once
         // for any round r
-        receivedPrePrepare.putIfAbsent(consensusInstance, new ConcurrentHashMap<>());
-        if (receivedPrePrepare.get(consensusInstance).put(round, true) != null) {
+        receivedPrePrepare.putIfAbsent(consensusInstanceMessage, new ConcurrentHashMap<>());
+        if (receivedPrePrepare.get(consensusInstanceMessage).put(round, true) != null) {
             LOGGER.log(Level.INFO,
                     MessageFormat.format(
                             "{0} - Already received PRE-PREPARE message for Consensus Instance {1}, Round {2}, "
                                     + "replying again to make sure it reaches the initial sender",
-                            config.getId(), consensusInstance, round));
+                            config.getId(), consensusInstanceMessage, round));
         }
 
         PrepareMessage prepareMessage = new PrepareMessage(prePrepareMessage.getValue());
 
         ConsensusMessage consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.PREPARE)
-                .setConsensusInstance(consensusInstance)
+                .setConsensusInstance(consensusInstanceMessage)
                 .setRound(round)
                 .setMessage(prepareMessage.toJson())
                 .setReplyTo(senderId)
@@ -288,25 +290,19 @@ public class NodeService implements UDPService {
         prepareMessages.addMessage(message);
 
         // Set instance values
-        /*
-         *  isto so interessa se nao existe o instance info ainda
-         *
-         *  We cant accept first prepare with this value we have to have a quorum of those (maybe init with null)
-         *  - also can do the same check as the preprepare one (this prob does not work, someone can forge a msg that has a real msg from client but not the one being used now)
-         *      - para isto funcionar precisavamos de receber a msg preprepare do lider, extra à msg do prepare tambem 
-         *        com isso podiamos confirmar que o lider mandou
-         * (if it does not hold, we can ignore or wait for a quorum of this value) 
-         *  SEE BETTER
-         *  if we received preprepare we dont have this problem, already checked
-         *
-         *  RESUMINDO:
-         *  - receber prepare com : cenas normais + msg do preprepare vindo do lider + msg do append do client
-         *      - confirmar, se o lider é o suposto e se o client realmente enviou isto
-         *
-         *  CRIAR COM VALUE A NULL
-         *
-         *  TODO
-         * */
+
+        // TESTAR TAMBEM SE E DUPLICADO MSG CLIENT
+        // TODO
+        InstanceInfo ii = this.instanceInfo.get(consensusInstance);
+        if (ii == null && !message.getClient().checkDS(this.keysPath)) {
+            LOGGER.log(Level.INFO,
+                    MessageFormat.format(
+                            "{0} - Received PRE-PREPARE message from {1} Consensus Instance {2}, Round {3} with faulty DS of client message",
+                            config.getId(), senderId, consensusInstanceMessage, round));
+            return;
+        }
+
+        // value does not matter
         this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(value));
         InstanceInfo instance = this.instanceInfo.get(consensusInstance);
 

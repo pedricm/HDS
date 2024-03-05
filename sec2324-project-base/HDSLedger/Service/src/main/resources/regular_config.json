@@ -23,8 +23,15 @@
     {
         "id": "4",
         "isLeader": false,
-        "isClient": true,
+        "isClient": false,
         "hostname": "localhost",
         "port": 3004
+    },
+    {
+        "id": "5",
+        "isLeader": false,
+        "isClient": true,
+        "hostname": "localhost",
+        "port": 3005
     }
 ]
