@@ -15,11 +15,16 @@ public class MessageBucket {
     private static final CustomLogger LOGGER = new CustomLogger(MessageBucket.class.getName());
     // Quorum size
     private final int quorumSize;
+
+    // Node count
+    private final int numberNodes;
+
     // Instance -> Round -> Sender ID -> Consensus message
     private final Map<Integer, Map<Integer, Map<String, ConsensusMessage>>> bucket = new ConcurrentHashMap<>();
 
     public MessageBucket(int nodeCount) {
         int f = Math.floorDiv(nodeCount - 1, 3);
+        numberNodes = nodeCount;
         quorumSize = Math.floorDiv(nodeCount + f, 2) + 1;
     }
 
@@ -74,6 +79,41 @@ public class MessageBucket {
             return entry.getKey();
         }).findFirst();
     }
+
+    public Optional<Integer> hasValidRoundChangeQuorum(String nodeId, int instance, int round) {
+        // Create mapping of value to frequency
+        HashMap<Integer, Integer> frequency = new HashMap<>();
+        bucket.get(instance).get(round).values().forEach((message) -> {
+            ConsensusMessage consensusMessage = message;
+            int prepared_round = consensusMessage.getPreparedRound();
+            frequency.put(prepared_round, frequency.getOrDefault(prepared_round, 0) + 1);
+        });
+
+        // Only one value (if any, thus the optional) will have a frequency
+        // greater than or equal to the quorum size
+        return frequency.entrySet().stream().filter((Map.Entry<Integer, Integer> entry) -> {
+            return entry.getValue() >= quorumSize;
+        }).map((Map.Entry<Integer, Integer> entry) -> {
+            return entry.getKey();
+        }).findFirst();
+    }
+
+    public Optional<Integer> hasRoundChange(String nodeId, int instance, int round) {
+        int f = Math.floorDiv(this.numberNodes - 1, 3);
+        HashMap<Integer, Integer> frequency = new HashMap<>();
+        bucket.get(instance).get(round).values().forEach((message) -> {
+            ConsensusMessage consensusMessage = message;
+            int prepared_round = consensusMessage.getPreparedRound();
+            frequency.put(prepared_round, frequency.getOrDefault(prepared_round, 0) + 1);
+        });
+
+
+        return frequency.entrySet().stream().filter((Map.Entry<Integer, Integer> entry) -> {
+            return entry.getValue() >= f + 1;
+        }).map((Map.Entry<Integer, Integer> entry) -> {
+            return entry.getKey();
+        }).findFirst();
+    } 
 
     public Map<String, ConsensusMessage> getMessages(int instance, int round) {
         return bucket.get(instance).get(round);
