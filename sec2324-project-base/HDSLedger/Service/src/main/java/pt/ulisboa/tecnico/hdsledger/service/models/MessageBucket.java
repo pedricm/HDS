@@ -103,8 +103,10 @@ public class MessageBucket {
         HashMap<Integer, Integer> frequency = new HashMap<>();
         bucket.get(instance).get(round).values().forEach((message) -> {
             ConsensusMessage consensusMessage = message;
-            int prepared_round = consensusMessage.getPreparedRound();
-            frequency.put(prepared_round, frequency.getOrDefault(prepared_round, 0) + 1);
+            int message_round = consensusMessage.getRound();
+            if (message_round > round) {
+                frequency.put(message_round, frequency.getOrDefault(message_round, 0) + 1);
+            }
         });
 
 
@@ -112,8 +114,8 @@ public class MessageBucket {
             return entry.getValue() >= f + 1;
         }).map((Map.Entry<Integer, Integer> entry) -> {
             return entry.getKey();
-        }).findFirst();
-    } 
+        }).min(Integer::compare);
+    }
 
     public Map<String, ConsensusMessage> getMessages(int instance, int round) {
         return bucket.get(instance).get(round);
