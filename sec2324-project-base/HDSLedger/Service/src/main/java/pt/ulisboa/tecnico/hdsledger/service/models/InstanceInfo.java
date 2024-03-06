@@ -16,6 +16,7 @@ public class InstanceInfo {
         this.inputValue = inputValue;
     }
     public void cancelTimer() {
+        if(this.timer == null) return;
         this.timer.cancel();
     }
     public void setTimer(Timer timer) {

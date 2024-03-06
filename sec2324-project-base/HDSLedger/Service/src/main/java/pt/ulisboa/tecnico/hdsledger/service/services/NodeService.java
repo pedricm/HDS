@@ -105,13 +105,26 @@ public class NodeService implements UDPService {
         return consensusMessage;
     }
     public ConsensusMessage createConsensusMessageRoundChange(int prepRound, String prepValue, int instance, int round) {
+        Optional<ArrayList<ConsensusMessage>> validQ = prepareMessages.getLastQuorum();
+        ConsensusMessage consensusMessage;
+        if(validQ.isPresent()){
+            consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.ROUND_CHANGE)
+                    .setConsensusInstance(instance)
+                    .setRound(round)
+                    .setPreparedRound(prepRound)
+                    .setPreparedValue(prepValue)
+                    .setValidQ(validQ.get())
+                    .build();
 
-        ConsensusMessage consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.ROUND_CHANGE)
-                .setConsensusInstance(instance)
-                .setRound(round)
-                .setPreparedRound(prepRound)
-                .setPreparedValue(prepValue)
-                .build();
+        } else {
+            consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.ROUND_CHANGE)
+                    .setConsensusInstance(instance)
+                    .setRound(round)
+                    .setPreparedRound(prepRound)
+                    .setPreparedValue(prepValue)
+                    .setValidQ(null)
+                    .build();
+        }
 
         return consensusMessage;
     }
@@ -136,7 +149,7 @@ public class NodeService implements UDPService {
         if(timer == null)
             timer = new Timer();
         else
-            timer.cancel();
+            timer.cancel(); // can do double cancel
         timer.scheduleAtFixedRate(task, 10000, 10000); // pode ser *roundNumber
         return timer;
     }
@@ -167,7 +180,7 @@ public class NodeService implements UDPService {
                             config.getId(), message.getSenderId()));
             return;
         }*/
-
+        //if(config.getId().equals("4")) return;
         // Set initial consensus values
         String value = message.getMessage();
         int localConsensusInstance = this.consensusInstance.incrementAndGet();
@@ -204,6 +217,7 @@ public class NodeService implements UDPService {
         if (this.isLeader(localConsensusInstance, instance.getCurrentRound(), this.config.getId())) {
             LOGGER.log(Level.INFO,
                 MessageFormat.format("{0} - Node is leader, sending PRE-PREPARE message", config.getId()));
+            //return;
             this.link.broadcast(this.createConsensusMessage(message, value, localConsensusInstance, instance.getCurrentRound()));
         } else {
             LOGGER.log(Level.INFO,
@@ -658,8 +672,10 @@ public class NodeService implements UDPService {
         Optional<Integer> roundChangeAmp;
         if(instance == null) {
             roundChangeAmp = roundchangeMessages.hasRoundChange(config.getId(), consensusInstance, 1);
-            if (roundChangeAmp.isPresent())
+            if (roundChangeAmp.isPresent()){
                 this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(null));
+                instance = this.instanceInfo.get(consensusInstance);
+            }
             else
                 return;
         }
@@ -676,8 +692,8 @@ public class NodeService implements UDPService {
         //If we are the leader (for the next round)
         // if no present and init value == null, nao faz nada e espera outra round change
         // e com a sua round o quorum???
-        Optional<String> roundChange = roundchangeMessages.hasValidRoundChangeQuorum(config.getId(), consensusInstance, instance.getCurrentRound());
-        if (roundChange.isPresent() && this.isLeader(consensusInstance, instance.getCurrentRound(), this.config.getId())) {
+        Optional<ArrayList<ConsensusMessage>> validQ = roundchangeMessages.hasValidRoundChangeQuorum(config.getId(), consensusInstance, instance.getCurrentRound());
+        if (validQ.isPresent() && this.isLeader(consensusInstance, instance.getCurrentRound(), this.config.getId())) {
             /*
             * We need to know the highest prepared round
             * Compare the highest prepared round with the lower bound?
@@ -685,14 +701,41 @@ public class NodeService implements UDPService {
             * - false => value its our input value
             * Brodadcast pre prepare
             **/
+            final int[] cmround = {-1};
+            final int size = roundchangeMessages.getQuorumSize();
+            final String[] cmVal = {null};
+            if(validQ == null) return; // impossible
+            validQ.get().stream().forEach( cm -> {
+                if(cm.getPreparedRound() > cmround[0]){
+                    final int[] i = {0};
+                    cm.deserializeValidQ().stream().forEach( qm -> {
+                        if (!qm.checkDS(this.keysPath)) {
+                            LOGGER.log(Level.INFO,
+                                    MessageFormat.format("{0} - Received ROUND_CHANGE message from {1}: Consensus Instance {2}, Round {3} with faulty DS",
+                                            config.getId(), message.getSenderId(), consensusInstance, round));
+                        }
+                        else if(qm.getPreparedRound() == cm.getPreparedRound() && qm.getPreparedValue() == cm.getPreparedValue())
+                            i[0]+=1;
+
+                    });
+                    if (i[0] == size){
+                        cmround[0] = cm.getPreparedRound();
+                        cmVal[0] = cm.getPreparedValue();
+                    }
+                }
+            });
             //ver se tem um Q de prepares por msg ou nada
             // TODO if "" is already a prep value it can be changed (not good), este problema deve desaparecer com o quorum de justificacao
-            if(roundChange.get().equals("")) {
+            if(cmVal[0] == null) {
                 // quando tivermos o quorum de preprepares tambem podemos ir buscar a msg do client e tirar de null TODO
-                if(instance.getInputValue() == null) return;
+                if(instance.getInputValue() == null){
+                    System.out.println("lsdfkjgbokhgbasfg sdaijgwesdrngbasfjigsdsdnglksdjgb");
+                    System.out.println("lsdfkjgbokhgbasfg sdaijgwesdrngbasfjigsdsdnglksdjgb");
+                    return;
+                }
                 this.link.broadcast(this.createConsensusMessage(null, instance.getInputValue(), consensusInstance, instance.getCurrentRound()));
             } else
-                this.link.broadcast(this.createConsensusMessage(null, roundChange.get(), consensusInstance, instance.getCurrentRound()));
+                this.link.broadcast(this.createConsensusMessage(null, cmVal[0], consensusInstance, instance.getCurrentRound()));
         }
         // para testar a ds client nos prepares basta testar f+1 para saber de uma bem
 

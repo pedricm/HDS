@@ -47,7 +47,9 @@ public class MessageBucket {
         bucket.get(consensusInstance).putIfAbsent(round, new ConcurrentHashMap<>());
         bucket.get(consensusInstance).get(round).put(message.getSenderId(), message);
     }
-
+    public int getQuorumSize(){
+        return this.quorumSize;
+    }
     public Optional<String> hasValidPrepareQuorum(String nodeId, int instance, int round) {
         // Create mapping of value to frequency
         HashMap<String, Integer> frequency = new HashMap<>();
@@ -120,15 +122,18 @@ public class MessageBucket {
         return Optional.empty();
     }
 
-    public Optional<String> hasValidRoundChangeQuorum(String nodeId, int instance, int round) {
+    public Optional<ArrayList<ConsensusMessage>> hasValidRoundChangeQuorum(String nodeId, int instance, int round) {
         // Create mapping of value to frequency
         HashMap<Integer, Integer> frequency = new HashMap<>();
-        HashMap<Integer, String> preparedPair = new HashMap<>();
-        bucket.get(instance).get(round).values().forEach((message) -> {
-            int prepared_round = message.getPreparedRound();
-            frequency.put(prepared_round, frequency.getOrDefault(prepared_round, 0) + 1);
-            // por enquanto ele apenas aceita, mas depois isto e resolvido com a justification
-            preparedPair.put(prepared_round, message.getPreparedValue());
+        HashMap<Integer, List<ConsensusMessage>> roundToMessages = new HashMap<>();
+        bucket.get(instance).values().forEach((mapMessages) -> {
+            mapMessages.values().forEach((message) -> {
+                int message_round = message.getRound();
+                if (message_round >= round) {
+                    frequency.put(message_round, frequency.getOrDefault(message_round, 0) + 1);
+                    roundToMessages.computeIfAbsent(message_round, k -> new ArrayList<>()).add(message);
+                }
+            });
         });
 
         // Only one value (if any, thus the optional) will have a frequency
@@ -137,13 +142,12 @@ public class MessageBucket {
             return entry.getValue() >= quorumSize;
         }).map((Map.Entry<Integer, Integer> entry) -> {
             return entry.getKey();
-        }).max(Integer::compare);
+        }).findFirst();
 
-        if (validRound.isPresent()) {
-            if(validRound.get() == -1) {
-                return Optional.of("");
-            }
-            return Optional.of(preparedPair.get(validRound.get()));
+        if(validRound.isPresent()) {
+            this.lastQuorum.clear();
+            this.lastQuorum.addAll(roundToMessages.get(validRound.get()));
+            return Optional.of(this.lastQuorum);
         }
         return Optional.empty();
     }
