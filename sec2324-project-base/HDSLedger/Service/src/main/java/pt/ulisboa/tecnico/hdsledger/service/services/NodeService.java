@@ -131,7 +131,6 @@ public class NodeService implements UDPService {
                 //Optional<String> preparedValue = prepareMessages.hasValidPrepareQuorum(config.getId(), consensusInstance, round);
                 //if(preparedValue)
                 link.broadcast(createConsensusMessageRoundChange(instance.getPreparedRound(), instance.getPreparedValue(), this.consensusInstanceTimer, instance.getCurrentRound()));
-                instance.cancelTimer();
             }
         };
         if(timer == null)
@@ -422,7 +421,7 @@ public class NodeService implements UDPService {
          *  Check msg DS
          *
          * */
-        List<ConsensusMessage> validQ = message.getValidQ();
+        String validQ = message.getValidQ();
         if(validQ != null){
             uponCommitted(message);
             return;
@@ -436,7 +435,7 @@ public class NodeService implements UDPService {
         LOGGER.log(Level.INFO,
                 MessageFormat.format("{0} - Received COMMIT message from {1}: Consensus Instance {2}, Round {3}",
                         config.getId(), message.getSenderId(), consensusInstance, round));
-        if(config.getId().equals("1")) return;
+        //if(config.getId().equals("1")) return;
 
         commitMessages.addMessage(message);
 
@@ -511,7 +510,7 @@ public class NodeService implements UDPService {
          *  Check msg DS
          *
          * */
-        List<ConsensusMessage> validQ = message.getValidQ();
+        List<ConsensusMessage> validQ = message.deserializeValidQ();
         if(validQ == null) return;
         System.out.println("DS: " + message.getDS() + "\n ID: " + message.getSenderId());
         if (!message.checkDS(this.keysPath)) {
