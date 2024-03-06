@@ -3,6 +3,9 @@ package pt.ulisboa.tecnico.hdsledger.service.models;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.ArrayList;
+import java.util.List;
+
 import java.util.concurrent.ConcurrentHashMap;
 
 import pt.ulisboa.tecnico.hdsledger.communication.CommitMessage;
@@ -21,6 +24,7 @@ public class MessageBucket {
 
     // Instance -> Round -> Sender ID -> Consensus message
     private final Map<Integer, Map<Integer, Map<String, ConsensusMessage>>> bucket = new ConcurrentHashMap<>();
+    private final  ArrayList<ConsensusMessage> lastQuorum = new ArrayList<>();
 
     public MessageBucket(int nodeCount) {
         int f = Math.floorDiv(nodeCount - 1, 3);
@@ -47,19 +51,31 @@ public class MessageBucket {
     public Optional<String> hasValidPrepareQuorum(String nodeId, int instance, int round) {
         // Create mapping of value to frequency
         HashMap<String, Integer> frequency = new HashMap<>();
+        HashMap<String, List<ConsensusMessage>> valueToMessages = new HashMap<>();
         bucket.get(instance).get(round).values().forEach((message) -> {
             PrepareMessage prepareMessage = message.deserializePrepareMessage();
             String value = prepareMessage.getValue();
             frequency.put(value, frequency.getOrDefault(value, 0) + 1);
+            valueToMessages.computeIfAbsent(value, k -> new ArrayList<>()).add(message);
+
         });
 
         // Only one value (if any, thus the optional) will have a frequency
         // greater than or equal to the quorum size
-        return frequency.entrySet().stream().filter((Map.Entry<String, Integer> entry) -> {
+        Optional<String> validValue = frequency.entrySet().stream().filter((Map.Entry<String, Integer> entry) -> {
             return entry.getValue() >= quorumSize;
         }).map((Map.Entry<String, Integer> entry) -> {
             return entry.getKey();
         }).findFirst();
+        if(validValue.isPresent()) {
+            this.lastQuorum.clear();
+            this.lastQuorum.addAll(valueToMessages.get(validValue.get()));
+        }
+        return validValue;
+    }
+    public Optional<ArrayList<ConsensusMessage>> getLastQuorum() {
+        if (this.lastQuorum.isEmpty()) return Optional.empty();
+        return Optional.of(this.lastQuorum);
     }
 
     public Optional<String> hasValidCommitQuorum(String nodeId, int instance, int round) {
@@ -78,6 +94,30 @@ public class MessageBucket {
         }).map((Map.Entry<String, Integer> entry) -> {
             return entry.getKey();
         }).findFirst();
+    }
+    public Optional<ArrayList<ConsensusMessage>> getValidCommitQuorum(String nodeId, int instance, int round) {
+        // Create mapping of value to frequency
+        HashMap<String, Integer> frequency = new HashMap<>();
+        HashMap<String, ArrayList<ConsensusMessage>> valueToMessages = new HashMap<>();
+        bucket.get(instance).get(round).values().forEach((message) -> {
+            CommitMessage commitMessage = message.deserializeCommitMessage();
+            String value = commitMessage.getValue();
+            frequency.put(value, frequency.getOrDefault(value, 0) + 1);
+            valueToMessages.computeIfAbsent(value, k -> new ArrayList<>()).add(message);
+        });
+
+        // Only one value (if any, thus the optional) will have a frequency
+        // greater than or equal to the quorum size
+        Optional<String> validValue = frequency.entrySet().stream().filter((Map.Entry<String, Integer> entry) -> {
+            return entry.getValue() >= quorumSize;
+        }).map((Map.Entry<String, Integer> entry) -> {
+            return entry.getKey();
+        }).findFirst();
+
+        if(validValue.isPresent()) {
+            return Optional.of(valueToMessages.get(validValue.get()));
+        }
+        return Optional.empty();
     }
 
     public Optional<String> hasValidRoundChangeQuorum(String nodeId, int instance, int round) {
@@ -100,6 +140,9 @@ public class MessageBucket {
         }).max(Integer::compare);
 
         if (validRound.isPresent()) {
+            if(validRound.get() == -1) {
+                return Optional.of("");
+            }
             return Optional.of(preparedPair.get(validRound.get()));
         }
         return Optional.empty();

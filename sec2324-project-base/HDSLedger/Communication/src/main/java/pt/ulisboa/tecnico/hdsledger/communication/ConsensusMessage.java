@@ -2,6 +2,7 @@ package pt.ulisboa.tecnico.hdsledger.communication;
 
 import com.google.gson.Gson;
 import pt.ulisboa.tecnico.hdsledger.utilities.CryptoLibrary;
+import java.util.ArrayList;
 
 public class ConsensusMessage extends Message {
 
@@ -18,6 +19,8 @@ public class ConsensusMessage extends Message {
 
     // Client message
     private ConsensusMessage client;
+    // Valid Messages Quorum
+    private ArrayList<ConsensusMessage> validQ;
     // Digital Signature (Base64)
     private String DS;
     private int preparedRound = -1;
@@ -25,6 +28,13 @@ public class ConsensusMessage extends Message {
 
     public ConsensusMessage(String senderId, Type type) {
         super(senderId, type);
+    }
+    public ArrayList<ConsensusMessage> getValidQ() {
+        return validQ;
+    }
+    public void setValidQ(ArrayList<ConsensusMessage> validQ) {
+        this.validQ = new ArrayList<>();
+        validQ.stream().forEach( cm -> this.validQ.add(cm));
     }
     public int getPreparedRound() {
         return preparedRound;

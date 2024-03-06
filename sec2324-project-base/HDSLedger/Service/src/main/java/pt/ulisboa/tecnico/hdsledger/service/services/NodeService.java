@@ -5,6 +5,7 @@ import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -114,20 +115,29 @@ public class NodeService implements UDPService {
 
         return consensusMessage;
     }
-    public Timer createTimerTask(int localConsensusInstance){
+    public Timer createTimerTask(int localConsensusInstance, Timer timer){
         TimerTask task = new InstanceTimerTask(localConsensusInstance) {
             @Override
             public void run() {
                 // FIX PARA O CANCEL : se o lastinstance > this.consensusIntance cancelar este timer
 
                 InstanceInfo instance = instanceInfo.get(this.consensusInstanceTimer);
-                if (lastDecidedConsensusInstance.get() >= this.consensusInstanceTimer ) instance.cancelTimer();
-
-                    System.out.println("aaaaaaaaaaaaa "+this.consensusInstanceTimer +" "+ instance.getPreparedRound()+" " +instance.getPreparedValue()+" "+ instance.getCurrentRound());
-                //this.link.broadcast(createConsensusMessageRoundChange(instance.getPreparedRound(), instance.getPreparedValue(), instance.getCurrentRound(), ))
+                if (lastDecidedConsensusInstance.get() >= this.consensusInstanceTimer ){
+                    instance.cancelTimer();
+                    return;
+                }
+                instance.setCurrentRound(instance.getCurrentRound()+1);
+                System.out.println("aaaaaaaaaaaaa "+this.consensusInstanceTimer +" "+ instance.getPreparedRound()+" " +instance.getPreparedValue()+" "+ instance.getCurrentRound());
+                //Optional<String> preparedValue = prepareMessages.hasValidPrepareQuorum(config.getId(), consensusInstance, round);
+                //if(preparedValue)
+                link.broadcast(createConsensusMessageRoundChange(instance.getPreparedRound(), instance.getPreparedValue(), this.consensusInstanceTimer, instance.getCurrentRound()));
+                instance.cancelTimer();
             }
         };
-        Timer timer = new Timer();
+        if(timer == null)
+            timer = new Timer();
+        else
+            timer.cancel();
         timer.scheduleAtFixedRate(task, 10000, 10000); // pode ser *roundNumber
         return timer;
     }
@@ -190,7 +200,7 @@ public class NodeService implements UDPService {
             return;
         }*/
         InstanceInfo instance = this.instanceInfo.get(localConsensusInstance);
-        instance.setTimer(createTimerTask(localConsensusInstance));
+        instance.setTimer(createTimerTask(localConsensusInstance, null));
         // Leader broadcasts PRE-PREPARE message
         if (this.isLeader(localConsensusInstance, instance.getCurrentRound(), this.config.getId())) {
             LOGGER.log(Level.INFO,
@@ -232,7 +242,7 @@ public class NodeService implements UDPService {
                             config.getId(), senderId, consensusInstanceMessage, round));
             return;
         }*/
-        if (!message.getClient().checkDS(this.keysPath)) {
+        if (message.getClient() != null && !message.getClient().checkDS(this.keysPath)) {
             LOGGER.log(Level.INFO,
                     MessageFormat.format(
                             "{0} - Received PRE-PREPARE message from {1} Consensus Instance {2}, Round {3} with faulty DS of client message",
@@ -265,7 +275,7 @@ public class NodeService implements UDPService {
             return;
         // Set instance value
         if (this.instanceInfo.putIfAbsent(consensusInstanceMessage, new InstanceInfo(value)) == null) {
-            this.instanceInfo.get(consensusInstanceMessage).setTimer(createTimerTask(consensusInstanceMessage));
+            this.instanceInfo.get(consensusInstanceMessage).setTimer(createTimerTask(consensusInstanceMessage, null));
         }
 
         // Within an instance of the algorithm, each upon rule is triggered at most once
@@ -340,7 +350,7 @@ public class NodeService implements UDPService {
         }
 
         if (this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(value)) == null) {
-            this.instanceInfo.get(consensusInstance).setTimer(createTimerTask(consensusInstance));
+            this.instanceInfo.get(consensusInstance).setTimer(createTimerTask(consensusInstance, null));
         }
         InstanceInfo instance = this.instanceInfo.get(consensusInstance);
 
@@ -412,6 +422,11 @@ public class NodeService implements UDPService {
          *  Check msg DS
          *
          * */
+        List<ConsensusMessage> validQ = message.getValidQ();
+        if(validQ != null){
+            uponCommitted(message);
+            return;
+        };
         if (!message.checkDS(this.keysPath)) {
             LOGGER.log(Level.INFO,
                     MessageFormat.format("{0} - Received COMMIT message from {1}: Consensus Instance {2}, Round {3} with faulty DS",
@@ -421,6 +436,7 @@ public class NodeService implements UDPService {
         LOGGER.log(Level.INFO,
                 MessageFormat.format("{0} - Received COMMIT message from {1}: Consensus Instance {2}, Round {3}",
                         config.getId(), message.getSenderId(), consensusInstance, round));
+        if(config.getId().equals("1")) return;
 
         commitMessages.addMessage(message);
 
@@ -486,6 +502,100 @@ public class NodeService implements UDPService {
                             config.getId(), consensusInstance, round, true));
         }
     }
+    public synchronized void uponCommitted(ConsensusMessage message) {
+
+        int consensusInstance = message.getConsensusInstance();
+        int round = message.getRound();
+
+        /*
+         *  Check msg DS
+         *
+         * */
+        List<ConsensusMessage> validQ = message.getValidQ();
+        if(validQ == null) return;
+        System.out.println("DS: " + message.getDS() + "\n ID: " + message.getSenderId());
+        if (!message.checkDS(this.keysPath)) {
+            LOGGER.log(Level.INFO,
+                    MessageFormat.format("{0} - Received ?COMMIT QUORUM INIT? message from {1}: Consensus Instance {2}, Round {3} with faulty DS",
+                            config.getId(), message.getSenderId(), consensusInstance, round));
+            return;
+        }
+        validQ.stream().forEach( ms -> {
+            if (!ms.checkDS(this.keysPath)) {
+                LOGGER.log(Level.INFO,
+                        MessageFormat.format("{0} - Received ?COMMIT QUORUM SUB? message from {1}: Consensus Instance {2}, Round {3} with faulty DS",
+                                config.getId(), ms.getSenderId(), ms.getConsensusInstance(), ms.getRound()));
+                return;
+            }
+        });
+
+        LOGGER.log(Level.INFO,
+                MessageFormat.format("{0} - Received COMMIT QUORUM message from {1}: Consensus Instance {2}, Round {3}",
+                        config.getId(), message.getSenderId(), consensusInstance, round));
+
+
+
+        InstanceInfo instance = this.instanceInfo.get(consensusInstance);
+
+        if (instance == null) {
+            // Should never happen because only receives commit as a response to a prepare message
+            MessageFormat.format(
+                    "{0} - CRITICAL: Received COMMIT message from {1}: Consensus Instance {2}, Round {3} BUT NO INSTANCE INFO",
+                    config.getId(), message.getSenderId(), consensusInstance, round);
+            return;
+        }
+
+        // Within an instance of the algorithm, each upon rule is triggered at most once
+        // for any round r
+        if (instance.getCommittedRound() >= round) {
+            LOGGER.log(Level.INFO,
+                    MessageFormat.format(
+                            "{0} - Already received COMMIT message for Consensus Instance {1}, Round {2}, ignoring",
+                            config.getId(), consensusInstance, round));
+            return;
+        }
+
+        /*
+         * Ver se existe prob em 2 mensagens chegarem ao mesmo tempo ambas entravam no if nao?
+         * ASK
+         * */
+        if (instance.getCommittedRound() < round) {
+
+            instance = this.instanceInfo.get(consensusInstance);
+            instance.setCommittedRound(round);
+
+            String value = validQ.stream().findAny().get().deserializeCommitMessage().getValue();
+
+
+            // Append value to the ledger (must be synchronized to be thread-safe)
+            synchronized(ledger) {
+
+                // Increment size of ledger to accommodate current instance
+                ledger.ensureCapacity(consensusInstance);
+                while (ledger.size() < consensusInstance - 1) {
+                    ledger.add("");
+                }
+
+                ledger.add(consensusInstance - 1, value);
+
+                LOGGER.log(Level.INFO,
+                        MessageFormat.format(
+                                "{0} - Current Ledger: {1}",
+                                config.getId(), String.join("", ledger)));
+            }
+
+            lastDecidedConsensusInstance.getAndIncrement();
+            // FIX BUG e possivel alguem nao ter timer e chegar aqui, ver como
+            //instance.cancelTimer();
+            // TODO - tem de se ter f+1 ds iguais para se fazer isso?
+            //clientRepository.messageDone(message.getClient().getSenderId(), message.getClient().getMessageId());
+            System.out.println("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+            LOGGER.log(Level.INFO,
+                    MessageFormat.format(
+                            "{0} - Decided on Consensus Instance {1}, Round {2}, Successful? {3}",
+                            config.getId(), consensusInstance, round, true));
+        }
+    }
     public synchronized void uponRoundChange(ConsensusMessage message) {
         int consensusInstance = message.getConsensusInstance();
         int round = message.getRound();
@@ -506,38 +616,88 @@ public class NodeService implements UDPService {
 
         roundchangeMessages.addMessage(message);
 
-        /*if (this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(value)) == null) { //Perguntar
-            //this.instanceInfo.get(consensusInstance).setTimer(createTimerTask(consensusInstance));
-        }*/
-        InstanceInfo instance = this.instanceInfo.get(consensusInstance);
+
+
 
         /*
         * TODO
         *  Se nós já decidimos esta ronda:
         *  Mandamos o quorum de commits para o sender
         * */
-        if (instance.getCommittedRound() >= round) {
+        if (lastDecidedConsensusInstance.get() >= consensusInstance) {
             LOGGER.log(Level.INFO,
                     MessageFormat.format(
                             "{0} - Already COMMITED for Consensus Instance {1}, Round {2}, ignoring",
                             config.getId(), consensusInstance, round));
+            Optional<ArrayList<ConsensusMessage>> validQ = commitMessages.getValidCommitQuorum(config.getId(), consensusInstance, this.instanceInfo.get(consensusInstance).getCommittedRound());
             //Send the quorum of commits to the sender
+            ConsensusMessage m;
+            if(validQ.isPresent()) {
+                m = new ConsensusMessageBuilder(config.getId(), Message.Type.COMMIT)
+                        .setConsensusInstance(consensusInstance)
+                        .setReplyTo(message.getSenderId())
+                        .setReplyToMessageId(message.getMessageId())
+                        .setValidQ(validQ.get())
+                        .build();
+            } else { // Supostamente nao acontece nunca
+                m = new ConsensusMessageBuilder(config.getId(), Message.Type.COMMIT)
+                        .setConsensusInstance(consensusInstance)
+                        .setReplyTo(message.getSenderId())
+                        .setReplyToMessageId(message.getMessageId())
+                        .setValidQ(null)
+                        .build();
+            }
+            link.send(message.getSenderId(), m);
+
             return;
+        }
+        //InstanceInfo instance = this.instanceInfo.get(consensusInstance);
+        //if (this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(value)) == null) { //Perguntar
+        //this.instanceInfo.get(consensusInstance).setTimer(createTimerTask(consensusInstance));
+        //}
+        InstanceInfo instance = this.instanceInfo.get(consensusInstance);
+        Optional<Integer> roundChangeAmp;
+        if(instance == null) {
+            roundChangeAmp = roundchangeMessages.hasRoundChange(config.getId(), consensusInstance, 1);
+            if (roundChangeAmp.isPresent())
+                this.instanceInfo.putIfAbsent(consensusInstance, new InstanceInfo(null));
+            else
+                return;
+        }
+        else {
+            roundChangeAmp = roundchangeMessages.hasRoundChange(config.getId(), consensusInstance, instance.getCurrentRound());
+        }
+        if (roundChangeAmp.isPresent()) {
+            instance.setCurrentRound(roundChangeAmp.get());
+            instance.setTimer(createTimerTask(consensusInstance, instance.getTimer()));
+            //BCAST roundchange
+            this.link.broadcast(createConsensusMessageRoundChange(instance.getPreparedRound(), instance.getPreparedValue(), consensusInstance, instance.getCurrentRound()));
         }
 
         //If we are the leader (for the next round)
-        Optional<String> roundChange = roundchangeMessages.hasValidRoundChangeQuorum(config.getId(), consensusInstance, round);
-        /*if (this.isLeader(localConsensusInstance, instance.getCurrentRound(), this.config.getId()) && roundChange.isPresent() && instance.getPreparedRound() < round) {
+        // if no present and init value == null, nao faz nada e espera outra round change
+        // e com a sua round o quorum???
+        Optional<String> roundChange = roundchangeMessages.hasValidRoundChangeQuorum(config.getId(), consensusInstance, instance.getCurrentRound());
+        if (roundChange.isPresent() && this.isLeader(consensusInstance, instance.getCurrentRound(), this.config.getId())) {
             /*
             * We need to know the highest prepared round
             * Compare the highest prepared round with the lower bound?
             * - true => we need to change our value is the same as the highest prepared value
             * - false => value its our input value
             * Brodadcast pre prepare
-            *
-            //instance.setCurrentRound();
+            **/
+            //ver se tem um Q de prepares por msg ou nada
+            // TODO if "" is already a prep value it can be changed (not good), este problema deve desaparecer com o quorum de justificacao
+            if(roundChange.get().equals("")) {
+                // quando tivermos o quorum de preprepares tambem podemos ir buscar a msg do client e tirar de null TODO
+                if(instance.getInputValue() == null) return;
+                this.link.broadcast(this.createConsensusMessage(null, instance.getInputValue(), consensusInstance, instance.getCurrentRound()));
+            } else
+                this.link.broadcast(this.createConsensusMessage(null, roundChange.get(), consensusInstance, instance.getCurrentRound()));
+        }
+        // para testar a ds client nos prepares basta testar f+1 para saber de uma bem
 
-        }*/
+
         //roundChange = roundchangeMessages.hasRoundChange(config.getId(), consensusInstance, round);
         //if (roundChange.isPresent() && instance.getPreparedRound() < round) {
             /*

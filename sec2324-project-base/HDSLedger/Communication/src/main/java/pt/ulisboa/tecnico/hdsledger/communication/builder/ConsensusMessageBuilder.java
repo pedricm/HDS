@@ -2,6 +2,7 @@ package pt.ulisboa.tecnico.hdsledger.communication.builder;
 
 import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.Message;
+import java.util.ArrayList;
 
 public class ConsensusMessageBuilder {
     private final ConsensusMessage instance;
@@ -15,6 +16,10 @@ public class ConsensusMessageBuilder {
     }
     public ConsensusMessageBuilder setDS(String keysPath) {
         instance.setDS(keysPath);
+        return this;
+    }
+    public ConsensusMessageBuilder setValidQ(ArrayList<ConsensusMessage> validQ) {
+        instance.setValidQ(validQ);
         return this;
     }
     public ConsensusMessageBuilder setMessage(String message) {

@@ -7,12 +7,11 @@ public class InstanceInfo {
 
     private int currentRound = 1;
     private int preparedRound = -1;
-    private String preparedValue;
+    private String preparedValue = null;
     private CommitMessage commitMessage;
     private String inputValue;
     private int committedRound = -1;
-    private Timer timer;
-
+    private Timer timer = null;
     public InstanceInfo(String inputValue) {
         this.inputValue = inputValue;
     }
@@ -21,6 +20,9 @@ public class InstanceInfo {
     }
     public void setTimer(Timer timer) {
         this.timer = timer;
+    }
+    public Timer getTimer() {
+        return timer;
     }
     public int getCurrentRound() {
         return currentRound;
