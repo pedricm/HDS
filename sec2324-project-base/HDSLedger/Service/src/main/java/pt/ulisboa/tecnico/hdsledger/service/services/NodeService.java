@@ -128,7 +128,7 @@ public class NodeService implements UDPService {
             }
         };
         Timer timer = new Timer();
-        timer.scheduleAtFixedRate(task, 10000, 10000);
+        timer.scheduleAtFixedRate(task, 10000, 10000); // pode ser *roundNumber
         return timer;
     }
     /*
@@ -526,7 +526,7 @@ public class NodeService implements UDPService {
         }
 
         //If we are the leader (for the next round)
-        Optional<Integer> roundChange = roundchangeMessages.hasValidRoundChangeQuorum(config.getId(), consensusInstance, round);
+        Optional<String> roundChange = roundchangeMessages.hasValidRoundChangeQuorum(config.getId(), consensusInstance, round);
         /*if (this.isLeader(localConsensusInstance, instance.getCurrentRound(), this.config.getId()) && roundChange.isPresent() && instance.getPreparedRound() < round) {
             /*
             * We need to know the highest prepared round
@@ -538,15 +538,15 @@ public class NodeService implements UDPService {
             //instance.setCurrentRound();
 
         }*/
-        roundChange = roundchangeMessages.hasRoundChange(config.getId(), consensusInstance, round);
-        if (roundChange.isPresent() && instance.getPreparedRound() < round) {
+        //roundChange = roundchangeMessages.hasRoundChange(config.getId(), consensusInstance, round);
+        //if (roundChange.isPresent() && instance.getPreparedRound() < round) {
             /*
              * We need to know the lowest prepared round (will be returned in hasRoundChange())
              * instance.setCurrentRound(); to the lowest round
              * set the timer
              * broadcast round change
              * */
-        }
+        //}
 
     }
 

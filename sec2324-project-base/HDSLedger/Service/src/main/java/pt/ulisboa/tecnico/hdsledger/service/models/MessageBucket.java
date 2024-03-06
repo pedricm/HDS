@@ -80,33 +80,41 @@ public class MessageBucket {
         }).findFirst();
     }
 
-    public Optional<Integer> hasValidRoundChangeQuorum(String nodeId, int instance, int round) {
+    public Optional<String> hasValidRoundChangeQuorum(String nodeId, int instance, int round) {
         // Create mapping of value to frequency
         HashMap<Integer, Integer> frequency = new HashMap<>();
+        HashMap<Integer, String> preparedPair = new HashMap<>();
         bucket.get(instance).get(round).values().forEach((message) -> {
-            ConsensusMessage consensusMessage = message;
-            int prepared_round = consensusMessage.getPreparedRound();
+            int prepared_round = message.getPreparedRound();
             frequency.put(prepared_round, frequency.getOrDefault(prepared_round, 0) + 1);
+            // por enquanto ele apenas aceita, mas depois isto e resolvido com a justification
+            preparedPair.put(prepared_round, message.getPreparedValue());
         });
 
         // Only one value (if any, thus the optional) will have a frequency
         // greater than or equal to the quorum size
-        return frequency.entrySet().stream().filter((Map.Entry<Integer, Integer> entry) -> {
+        Optional<Integer> validRound = frequency.entrySet().stream().filter((Map.Entry<Integer, Integer> entry) -> {
             return entry.getValue() >= quorumSize;
         }).map((Map.Entry<Integer, Integer> entry) -> {
             return entry.getKey();
-        }).findFirst();
+        }).max(Integer::compare);
+
+        if (validRound.isPresent()) {
+            return Optional.of(preparedPair.get(validRound.get()));
+        }
+        return Optional.empty();
     }
 
     public Optional<Integer> hasRoundChange(String nodeId, int instance, int round) {
         int f = Math.floorDiv(this.numberNodes - 1, 3);
         HashMap<Integer, Integer> frequency = new HashMap<>();
-        bucket.get(instance).get(round).values().forEach((message) -> {
-            ConsensusMessage consensusMessage = message;
-            int message_round = consensusMessage.getRound();
-            if (message_round > round) {
-                frequency.put(message_round, frequency.getOrDefault(message_round, 0) + 1);
-            }
+        bucket.get(instance).values().forEach((mapMessages) -> {
+            mapMessages.values().forEach((message) -> {
+                int message_round = message.getRound();
+                if (message_round > round) {
+                    frequency.put(message_round, frequency.getOrDefault(message_round, 0) + 1);
+                }
+        });
         });
 
 
