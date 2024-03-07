@@ -21,7 +21,7 @@ public class ConsensusMessage extends Message {
     // Client message
     private ConsensusMessage client;
     // Valid Messages Quorum
-    private String validQ;
+    private String validQ = null;
     // Digital Signature (Base64)
     private String DS;
     private int preparedRound = -1;
@@ -34,6 +34,7 @@ public class ConsensusMessage extends Message {
         return validQ;
     }
     public void setValidQ(ArrayList<ConsensusMessage> validQ) {
+        if(validQ == null) this.validQ = null;
         this.validQ = ObjToString.objToString(validQ);
     }
     public ArrayList<ConsensusMessage> deserializeValidQ() {

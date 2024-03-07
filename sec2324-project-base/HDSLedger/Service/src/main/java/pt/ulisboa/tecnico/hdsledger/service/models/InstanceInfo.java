@@ -2,6 +2,8 @@ package pt.ulisboa.tecnico.hdsledger.service.models;
 
 
 import pt.ulisboa.tecnico.hdsledger.communication.CommitMessage;
+import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
+
 import java.util.Timer;
 public class InstanceInfo {
 
@@ -9,16 +11,30 @@ public class InstanceInfo {
     private int preparedRound = -1;
     private String preparedValue = null;
     private CommitMessage commitMessage;
+    private ConsensusMessage clientMessage;
     private String inputValue;
     private int committedRound = -1;
     private Timer timer = null;
     public InstanceInfo(String inputValue) {
         this.inputValue = inputValue;
     }
+    public InstanceInfo(String inputValue, ConsensusMessage clientMessage) {
+        this.inputValue = inputValue;
+        this.clientMessage = clientMessage;
+    }
     public void cancelTimer() {
         if(this.timer == null) return;
         this.timer.cancel();
     }
+
+    public ConsensusMessage getClientMessage() {
+        return clientMessage;
+    }
+
+    public void setClientMessage(ConsensusMessage clientMessage) {
+        this.clientMessage = clientMessage;
+    }
+
     public void setTimer(Timer timer) {
         this.timer = timer;
     }

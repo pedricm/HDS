@@ -126,15 +126,11 @@ public class MessageBucket {
         // Create mapping of value to frequency
         HashMap<Integer, Integer> frequency = new HashMap<>();
         HashMap<Integer, List<ConsensusMessage>> roundToMessages = new HashMap<>();
-        bucket.get(instance).values().forEach((mapMessages) -> {
-            mapMessages.values().forEach((message) -> {
+        bucket.get(instance).get(round).values().forEach((message) -> {
                 int message_round = message.getRound();
-                if (message_round >= round) {
-                    frequency.put(message_round, frequency.getOrDefault(message_round, 0) + 1);
-                    roundToMessages.computeIfAbsent(message_round, k -> new ArrayList<>()).add(message);
-                }
+                frequency.put(message_round, frequency.getOrDefault(message_round, 0) + 1);
+                roundToMessages.computeIfAbsent(message_round, k -> new ArrayList<>()).add(message);
             });
-        });
 
         // Only one value (if any, thus the optional) will have a frequency
         // greater than or equal to the quorum size
