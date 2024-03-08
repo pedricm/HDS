@@ -3,7 +3,7 @@ Tu run the tests change the name of the configuration file in the `puppet-master
 
 Don't forget to write strings as input in the client
 
-![Change](sec3435-project-base/HDSLedger/img.png)
+![Change](Tests/img.webp)
 
 ## Test 1: "regular_config1.json"
 - Tests the client changing the message after calculating the digital signature
