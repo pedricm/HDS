@@ -14,15 +14,13 @@ public class ClientLibrary {
     //Link
     private Link link;
     private ProcessConfig nodeConfig;
-    private ProcessConfig leaderConfig;
     private ProcessConfig[] nodeConfigs;
 
     private static String nodeKeysPath = "../Service/src/main/resources/keys/";
 
-    public ClientLibrary(Link linkToNodes, ProcessConfig config, ProcessConfig leaderConf, ProcessConfig[] nodesConfig) {
+    public ClientLibrary(Link linkToNodes, ProcessConfig config, ProcessConfig[] nodesConfig) {
         this.link = linkToNodes;
         this.nodeConfig = config;
-        this.leaderConfig = leaderConf;
         this.nodeConfigs = nodesConfig;
     }
 

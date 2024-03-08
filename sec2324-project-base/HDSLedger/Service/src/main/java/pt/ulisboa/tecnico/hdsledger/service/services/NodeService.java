@@ -96,12 +96,23 @@ public class NodeService implements UDPService {
         PrePrepareMessage prePrepareMessage = new PrePrepareMessage(value);
         ConsensusMessage consensusMessage;
         if(roundChange == null) {
-            consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.PRE_PREPARE)
-                    .setConsensusInstance(instance)
-                    .setRound(round)
-                    .setMessage(prePrepareMessage.toJson())
-                    .setClient(clientMessage)
-                    .build();
+            if (config.getTest(2)) {
+                ConsensusMessage ms = clientMessage;
+                ms.setMessage("bizantine message");
+                consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.PRE_PREPARE)
+                        .setConsensusInstance(instance)
+                        .setRound(round)
+                        .setMessage(prePrepareMessage.toJson())
+                        .setClient(ms)
+                        .build();
+            } else {
+                consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.PRE_PREPARE)
+                        .setConsensusInstance(instance)
+                        .setRound(round)
+                        .setMessage(prePrepareMessage.toJson())
+                        .setClient(clientMessage)
+                        .build();
+            }
         } else {
             consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.PRE_PREPARE)
                     .setConsensusInstance(instance)
@@ -187,7 +198,7 @@ public class NodeService implements UDPService {
                             config.getId(), message.getSenderId()));
             return;
         }*/
-        //if(config.getId().equals("4")) return;
+        if(config.getTest(4)) return;
         // Set initial consensus values
         String value = message.getMessage();
         if (value == null) return;
@@ -217,7 +228,9 @@ public class NodeService implements UDPService {
         if (this.isLeader(localConsensusInstance, instance.getCurrentRound(), this.config.getId())) {
             LOGGER.log(Level.INFO,
                 MessageFormat.format("{0} - Node is leader, sending PRE-PREPARE message", config.getId()));
-            //return;
+            if (config.getTest(3)) {
+                return;
+            }
             this.link.broadcast(this.createConsensusMessage(message, value, localConsensusInstance, instance.getCurrentRound(), null));
         } else {
             LOGGER.log(Level.INFO,
@@ -348,8 +361,9 @@ public class NodeService implements UDPService {
                                     + "replying again to make sure it reaches the initial sender",
                             config.getId(), consensusInstanceMessage, round));
         }
-
-        PrepareMessage prepareMessage = new PrepareMessage(prePrepareMessage.getValue());
+        PrepareMessage prepareMessage;
+        if(config.getTest(5)) prepareMessage = new PrepareMessage("bizantine message");
+        else prepareMessage = new PrepareMessage(prePrepareMessage.getValue());
 
         ConsensusMessage consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.PREPARE)
                 .setConsensusInstance(consensusInstanceMessage)
@@ -359,7 +373,6 @@ public class NodeService implements UDPService {
                 .setReplyToMessageId(senderMessageId)
                 .setClient(message.getClient())
                 .build();
-
         this.link.broadcast(consensusMessage);
     }
 
@@ -470,7 +483,7 @@ public class NodeService implements UDPService {
         int consensusInstance = message.getConsensusInstance();
         int round = message.getRound();
 
-        //if(instanceInfo.get(consensusInstance).getCurrentRound() == 1) return;
+        if(config.getTest(6) && instanceInfo.get(consensusInstance).getCurrentRound() == 1) return;
         /*
          *  Check msg DS
          *
@@ -484,7 +497,7 @@ public class NodeService implements UDPService {
         }
 
         String validQs = message.getValidQ();
-        //if(config.getId().equals("1") && validQs == null) return;
+        if(config.getTest(7) && validQs == null) return;
 
         if(validQs != null) {
             List<ConsensusMessage> validQ = message.deserializeValidQ();

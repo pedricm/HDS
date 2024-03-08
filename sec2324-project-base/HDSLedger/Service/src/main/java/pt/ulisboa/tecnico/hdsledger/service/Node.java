@@ -35,8 +35,8 @@ public class Node {
                     .toArray(ProcessConfig[]::new);
             ProcessConfig nodeConfig = Arrays.stream(nodeConfigs).filter(c -> c.getId().equals(id)).findAny().get();
 
-            LOGGER.log(Level.INFO, MessageFormat.format("{0} - Running at {1}:{2}; is client; {3}",
-                    nodeConfig.getId(), nodeConfig.getHostname(), nodeConfig.getPort(), nodeConfig.isClient()));
+            LOGGER.log(Level.INFO, MessageFormat.format("{0} - Running at {1}:{2}; is client; {3}; tests: {4}",
+                    nodeConfig.getId(), nodeConfig.getHostname(), nodeConfig.getPort(), nodeConfig.isClient(), Arrays.toString(nodeConfig.getTests())));
 
             // Abstraction to send and receive messages
             Link linkToNodes = new Link(nodeConfig, nodeConfig.getPort(), nodeConfigs, clientConfigs,

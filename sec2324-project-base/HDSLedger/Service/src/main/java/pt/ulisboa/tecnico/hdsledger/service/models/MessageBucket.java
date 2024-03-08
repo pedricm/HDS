@@ -165,7 +165,7 @@ public class MessageBucket {
         int i = 0;
         boolean flag = false;
         while (over > 0){
-            if(!flag && nq.get(i).getPreparedRound() == prepI && nq.get(i).getPreparedValue().equals(prepVal)){
+            if(!flag && nq.get(i).getPreparedRound() == prepI && nq.get(i).getPreparedValue() != null && prepVal != null && nq.get(i).getPreparedValue().equals(prepVal)){
                 flag = true;
                 i++;
             } else {
