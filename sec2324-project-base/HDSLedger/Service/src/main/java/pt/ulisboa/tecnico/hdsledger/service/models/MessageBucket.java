@@ -71,6 +71,8 @@ public class MessageBucket {
         }).findFirst();
         if(validValue.isPresent()) {
             this.lastQuorum.clear();
+            int size = (valueToMessages.get(validValue.get())).size();
+            if (size > quorumSize) (valueToMessages.get(validValue.get())).subList(quorumSize, size).clear();
             this.lastQuorum.addAll(valueToMessages.get(validValue.get()));
         }
         return validValue;
@@ -117,19 +119,27 @@ public class MessageBucket {
         }).findFirst();
 
         if(validValue.isPresent()) {
+            int size = (valueToMessages.get(validValue.get())).size();
+            if (size > quorumSize) (valueToMessages.get(validValue.get())).subList(quorumSize, size).clear();
             return Optional.of(valueToMessages.get(validValue.get()));
         }
         return Optional.empty();
     }
 
-    public Optional<ArrayList<ConsensusMessage>> hasValidRoundChangeQuorum(String nodeId, int instance, int round) {
+    public Optional<String[]> hasValidRoundChangeQuorum(String nodeId, int instance, int round) {
         // Create mapping of value to frequency
         HashMap<Integer, Integer> frequency = new HashMap<>();
-        HashMap<Integer, List<ConsensusMessage>> roundToMessages = new HashMap<>();
+        final int[] cmround = {-1};
+        final String[] cmVal = {null};
+        HashMap<Integer, ArrayList<ConsensusMessage>> roundToMessages = new HashMap<>();
         bucket.get(instance).get(round).values().forEach((message) -> {
                 int message_round = message.getRound();
                 frequency.put(message_round, frequency.getOrDefault(message_round, 0) + 1);
                 roundToMessages.computeIfAbsent(message_round, k -> new ArrayList<>()).add(message);
+                if(message.getPreparedRound() > cmround[0]){
+                    cmround[0] = message.getPreparedRound();
+                    cmVal[0] = message.getPreparedValue();
+                }
             });
 
         // Only one value (if any, thus the optional) will have a frequency
@@ -141,13 +151,29 @@ public class MessageBucket {
         }).findFirst();
 
         if(validRound.isPresent()) {
+            ArrayList<ConsensusMessage> nq = roundToMessages.get(validRound.get());
             this.lastQuorum.clear();
-            this.lastQuorum.addAll(roundToMessages.get(validRound.get()));
-            return Optional.of(this.lastQuorum);
+            this.removeOver(nq, cmround[0], cmVal[0]);
+
+            this.lastQuorum.addAll(nq);
+            return Optional.of(cmVal);
         }
         return Optional.empty();
     }
-
+    private void removeOver(ArrayList<ConsensusMessage> nq, int prepI, String prepVal) {
+        int over = nq.size() - this.getQuorumSize();
+        int i = 0;
+        boolean flag = false;
+        while (over > 0){
+            if(!flag && nq.get(i).getPreparedRound() == prepI && nq.get(i).getPreparedValue().equals(prepVal)){
+                flag = true;
+                i++;
+            } else {
+                nq.remove(i);
+                over--;
+            }
+        }
+    }
     public Optional<Integer> hasRoundChange(String nodeId, int instance, int round) {
         int f = Math.floorDiv(this.numberNodes - 1, 3);
         HashMap<Integer, Integer> frequency = new HashMap<>();

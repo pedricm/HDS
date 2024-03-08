@@ -9,11 +9,12 @@ public class InstanceInfo {
 
     private int currentRound = 1;
     private int preparedRound = -1;
+    private int committedRound = -1;
+    private int roundChangeRound = -1;
     private String preparedValue = null;
     private CommitMessage commitMessage;
     private ConsensusMessage clientMessage;
     private String inputValue;
-    private int committedRound = -1;
     private Timer timer = null;
     public InstanceInfo(String inputValue) {
         this.inputValue = inputValue;
@@ -25,6 +26,14 @@ public class InstanceInfo {
     public void cancelTimer() {
         if(this.timer == null) return;
         this.timer.cancel();
+    }
+
+    public int getRoundChangeRound() {
+        return roundChangeRound;
+    }
+
+    public void setRoundChangeRound(int roundChangeRound) {
+        this.roundChangeRound = roundChangeRound;
     }
 
     public ConsensusMessage getClientMessage() {

@@ -34,7 +34,11 @@ public class ConsensusMessage extends Message {
         return validQ;
     }
     public void setValidQ(ArrayList<ConsensusMessage> validQ) {
-        if(validQ == null) this.validQ = null;
+        //System.out.println("TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"+(validQ == null));
+        if(validQ == null) {
+                this.validQ = null;
+                return;
+        }
         this.validQ = ObjToString.objToString(validQ);
     }
     public ArrayList<ConsensusMessage> deserializeValidQ() {
