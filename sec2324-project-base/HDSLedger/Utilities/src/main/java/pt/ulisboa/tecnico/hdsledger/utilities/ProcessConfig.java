@@ -3,7 +3,6 @@ package pt.ulisboa.tecnico.hdsledger.utilities;
 public class ProcessConfig {
     public ProcessConfig() {}
 
-    private boolean isLeader;
     private boolean isClient;
 
     private String hostname;
@@ -12,10 +11,16 @@ public class ProcessConfig {
 
     private int port;
 
-    public boolean isLeader() {
-        return isLeader;
-    }
+    private int[] tests;
+
     public boolean isClient() { return isClient; }
+
+    public int[] getTests() {
+        return tests;
+    }
+    public boolean getTest(int i) {
+        return tests[i-1] == 1;
+    }
 
     public int getPort() {
         return port;

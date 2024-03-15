@@ -17,14 +17,14 @@
         "id": "3",
         "isClient": false,
         "hostname": "localhost",
-        "tests": [0,0,0,0,0,0,0],
+        "tests": [0,0,1,0,0,0,0],
         "port": 3003
     },
     {
         "id": "4",
         "isClient": false,
         "hostname": "localhost",
-        "tests": [0,0,0,0,0,0,0],
+        "tests": [0,0,0,1,0,0,0],
         "port": 3004
     },
     {

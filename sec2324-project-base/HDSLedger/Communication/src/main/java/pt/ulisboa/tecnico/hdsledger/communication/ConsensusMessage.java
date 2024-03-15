@@ -2,6 +2,8 @@ package pt.ulisboa.tecnico.hdsledger.communication;
 
 import com.google.gson.Gson;
 import pt.ulisboa.tecnico.hdsledger.utilities.CryptoLibrary;
+import pt.ulisboa.tecnico.hdsledger.utilities.ObjToString;
+import java.util.ArrayList;
 
 public class ConsensusMessage extends Message {
 
@@ -18,11 +20,45 @@ public class ConsensusMessage extends Message {
 
     // Client message
     private ConsensusMessage client;
+    // Valid Messages Quorum
+    private String validQ = null;
     // Digital Signature (Base64)
     private String DS;
+    private int preparedRound = -1;
+    private String preparedValue;
 
     public ConsensusMessage(String senderId, Type type) {
         super(senderId, type);
+    }
+    public String getValidQ() {
+        return validQ;
+    }
+    public void setValidQ(ArrayList<ConsensusMessage> validQ) {
+        //System.out.println("TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"+(validQ == null));
+        if(validQ == null) {
+                this.validQ = null;
+                return;
+        }
+        this.validQ = ObjToString.objToString(validQ);
+    }
+    public ArrayList<ConsensusMessage> deserializeValidQ() {
+        if(this.validQ == null) return null;
+        return (ArrayList<ConsensusMessage>) ObjToString.stringToObj(this.validQ);
+    }
+    public int getPreparedRound() {
+        return preparedRound;
+    }
+
+    public void setPreparedRound(int preparedRound) {
+        this.preparedRound = preparedRound;
+    }
+
+    public String getPreparedValue() {
+        return preparedValue;
+    }
+
+    public void setPreparedValue(String preparedValue) {
+        this.preparedValue = preparedValue;
     }
 
     public ConsensusMessage getClient() {

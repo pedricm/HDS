@@ -33,19 +33,17 @@ public class Node {
             ProcessConfig[] clientConfigs = Arrays.stream(configs)
                     .filter(ProcessConfig::isClient)
                     .toArray(ProcessConfig[]::new);
-            ProcessConfig leaderConfig = Arrays.stream(nodeConfigs).filter(ProcessConfig::isLeader).findAny().get();
             ProcessConfig nodeConfig = Arrays.stream(nodeConfigs).filter(c -> c.getId().equals(id)).findAny().get();
 
-            LOGGER.log(Level.INFO, MessageFormat.format("{0} - Running at {1}:{2}; is leader: {3}; is client; {4}",
-                    nodeConfig.getId(), nodeConfig.getHostname(), nodeConfig.getPort(),
-                    nodeConfig.isLeader(), nodeConfig.isClient()));
+            LOGGER.log(Level.INFO, MessageFormat.format("{0} - Running at {1}:{2}; is client; {3}; tests: {4}",
+                    nodeConfig.getId(), nodeConfig.getHostname(), nodeConfig.getPort(), nodeConfig.isClient(), Arrays.toString(nodeConfig.getTests())));
 
             // Abstraction to send and receive messages
             Link linkToNodes = new Link(nodeConfig, nodeConfig.getPort(), nodeConfigs, clientConfigs,
                     ConsensusMessage.class);
 
             // Services that implement listen from UDPService
-            NodeService nodeService = new NodeService(linkToNodes, nodeConfig, leaderConfig,
+            NodeService nodeService = new NodeService(linkToNodes, nodeConfig,
                     nodeConfigs, keysPath);
 
             nodeService.listen();

@@ -109,7 +109,9 @@ public class Link {
 
                 data.setMessageId(messageCounter.getAndIncrement());
                 ((ConsensusMessage) data).setDS(keysPath);
-
+                if (config.getTest(1)){
+                    ((ConsensusMessage) data).setMessage("somethingElse");
+                }
                 // If the message is not ACK, it will be resent
                 InetAddress destAddress = InetAddress.getByName(node.getHostname());
                 int destPort = node.getPort();

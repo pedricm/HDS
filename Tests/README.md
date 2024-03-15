@@ -3,7 +3,7 @@ Tu run the tests change the name of the configuration file in the `puppet-master
 
 Don't forget to write strings as input in the client
 
-![Change](Tests/img.webp)
+![Change](img.webp)
 
 ## Test 1: "regular_config1.json"
 - Tests the client changing the message after calculating the digital signature
@@ -34,12 +34,12 @@ Nodes still reach consensus with the correct value
 
 
 ## Test 6: "regular_config6.json"
-- Nodes don´t commit on the first round, but prepare the messages
+- Nodes donÂ´t commit on the first round, but prepare the messages
 
-Simulates a break of the network, will lead to a round change and then the nodes will commit using the prepare messages sent in the round change messages
+Will lead to a round change and then the nodes will commit using the prepare messages sent in the round change messages
 
 
 ## Test 7: "regular_config7.json"
-- Only one of the nodes will not commit (node 4)
+- Only one of the nodes will not commit
 
 Will lead to that node sending round change messages and that other nodes will send their commit messages and the node will commit

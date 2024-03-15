@@ -29,18 +29,16 @@ public class Main {
                 ProcessConfig[] clientConfigs = Arrays.stream(configs)
                         .filter(ProcessConfig::isClient)
                         .toArray(ProcessConfig[]::new);
-                ProcessConfig leaderConfig = Arrays.stream(nodeConfigs).filter(ProcessConfig::isLeader).findAny().get();
                 ProcessConfig ClientConfig = Arrays.stream(clientConfigs).filter(c -> c.getId().equals(id)).findAny().get();
 
-                LOGGER.log(Level.INFO, MessageFormat.format("{0} - Running at {1}:{2}; is leader: {3}",
-                        ClientConfig.getId(), ClientConfig.getHostname(), ClientConfig.getPort(),
-                        ClientConfig.isLeader()));
+                LOGGER.log(Level.INFO, MessageFormat.format("{0} - Running at {1}:{2}; tests: {3}",
+                        ClientConfig.getId(), ClientConfig.getHostname(), ClientConfig.getPort(), Arrays.toString(ClientConfig.getTests())));
 
                 // Abstraction to send and receive messages
                 Link linkToNodes = new Link(ClientConfig, ClientConfig.getPort(), nodeConfigs, clientConfigs,
                         ConsensusMessage.class);
 
-                Client client = new Client(linkToNodes, ClientConfig, leaderConfig, nodeConfigs); //ipServer, portServer, privateClientKeyPath, publicClientKeyPath, privateClient2KeyPath, publicClient2KeyPath, publicServerKeyPath
+                Client client = new Client(linkToNodes, ClientConfig, nodeConfigs);
                 Scanner parser = new Scanner(System.in);
 
                 printUsage();

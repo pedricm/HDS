@@ -24,7 +24,7 @@
         "id": "4",
         "isClient": false,
         "hostname": "localhost",
-        "tests": [0,0,0,0,0,0,0],
+        "tests": [0,0,0,0,0,0,1],
         "port": 3004
     },
     {
