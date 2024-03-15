@@ -37,8 +37,13 @@ public class ClientLibrary {
 
         new Thread(() -> {
             Message message = null;
-            while (message == null) {
+            int responses = 0;
+            while (responses < this.nodeConfigs.length ) {
                 message = receive();
+                if (message != null) {
+                    responses++;
+                    System.out.println("Received response: " + message + " id: " + message.getMessageId());
+                }
             }
         }).start();
     }
