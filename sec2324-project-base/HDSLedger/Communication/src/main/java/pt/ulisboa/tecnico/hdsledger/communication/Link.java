@@ -129,6 +129,10 @@ public class Link {
 
                     return;
                 }
+                //client does not send ACK to the node ack
+                if (data.getType().equals(Type.ACK_CLIENT)){
+                    receivedAcks.add(messageId);
+                }
 
                 for (;;) {
                     LOGGER.log(Level.INFO, MessageFormat.format(
