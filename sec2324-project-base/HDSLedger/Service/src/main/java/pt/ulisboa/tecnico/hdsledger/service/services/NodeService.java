@@ -221,11 +221,14 @@ public class NodeService implements UDPService {
                 e.printStackTrace();
             }
         }
+
+        //Send ACK_CLIENT to client
         ConsensusMessage consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.ACK_CLIENT)
                 .setReplyTo(message.getSenderId())
                 .setReplyToMessageId(message.getMessageId())
                 .build();
         this.link.send(message.getSenderId(), consensusMessage);
+
         InstanceInfo instance = this.instanceInfo.get(localConsensusInstance);
         instance.setTimer(createTimerTask(localConsensusInstance, null));
         // Leader broadcasts PRE-PREPARE message
