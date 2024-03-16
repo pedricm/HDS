@@ -132,6 +132,7 @@ public class MessageBucket {
         final int[] cmround = {-1};
         final String[] cmVal = {null};
         HashMap<Integer, ArrayList<ConsensusMessage>> roundToMessages = new HashMap<>();
+        if (bucket.get(instance).get(round) == null) return Optional.empty();
         bucket.get(instance).get(round).values().forEach((message) -> {
                 int message_round = message.getRound();
                 frequency.put(message_round, frequency.getOrDefault(message_round, 0) + 1);
