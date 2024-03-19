@@ -129,6 +129,10 @@ public class Link {
 
                     return;
                 }
+                //client does not send ACK to the node ack
+                if (data.getType().equals(Type.ACK_CLIENT)){
+                    receivedAcks.add(messageId);
+                }
 
                 for (;;) {
                     LOGGER.log(Level.INFO, MessageFormat.format(
@@ -251,6 +255,13 @@ public class Link {
             case APPEND -> {
                 System.out.println("APPENDINGGGG");
                 ConsensusMessage consensusMessage = (ConsensusMessage) message;
+                receivedAcks.add(consensusMessage.getReplyToMessageId());
+                //System.out.println("______________________________Added ACK for message " + consensusMessage.getReplyToMessageId());
+                return message;
+            }
+            case ACK_CLIENT -> {
+                ConsensusMessage consensusMessage = (ConsensusMessage) message;
+                receivedAcks.add(consensusMessage.getReplyToMessageId());
                 return message;
             }
             default -> {}

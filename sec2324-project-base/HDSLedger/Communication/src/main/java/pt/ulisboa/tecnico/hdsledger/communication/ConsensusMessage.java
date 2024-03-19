@@ -98,6 +98,10 @@ public class ConsensusMessage extends Message {
         return new Gson().fromJson(this.message, CommitMessage.class);
     }
 
+    public ClientMessage deserializeClientMessage() {
+        return new Gson().fromJson(this.message, ClientMessage.class);
+    }
+
     public String getMessage() {
         return message;
     }
