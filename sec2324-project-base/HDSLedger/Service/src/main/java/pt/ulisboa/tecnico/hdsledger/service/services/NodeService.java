@@ -58,6 +58,7 @@ public class NodeService implements UDPService {
 
     // Ledger (for now, just a list of strings)
     private ArrayList<String> ledger = new ArrayList<String>();
+    private Map<Integer, String> finishedEpochs = new ConcurrentHashMap<>();
 
     private String keysPath;
 
@@ -157,7 +158,7 @@ public class NodeService implements UDPService {
                 // FIX PARA O CANCEL : se o lastinstance > this.consensusIntance cancelar este timer
 
                 InstanceInfo instance = instanceInfo.get(this.consensusInstanceTimer);
-                if (lastDecidedConsensusInstance.get() >= this.consensusInstanceTimer ){
+                if (instance.getCommittedRound() != -1){
                     instance.cancelTimer();
                     return;
                 }
@@ -165,10 +166,11 @@ public class NodeService implements UDPService {
                 link.broadcast(createConsensusMessageRoundChange(instance.getPreparedRound(), instance.getPreparedValue(), this.consensusInstanceTimer, instance.getCurrentRound()));
             }
         };
-        if(timer == null)
-            timer = new Timer();
-        else
-            timer.cancel(); // can do double cancel
+        if(timer != null){
+            timer.cancel();
+            timer.purge();
+        }
+        timer = new Timer();
         timer.scheduleAtFixedRate(task, 10000, 10000); // pode ser *roundNumber
         return timer;
     }
@@ -214,13 +216,13 @@ public class NodeService implements UDPService {
 
         // Only start a consensus instance if the last one was decided
         // We need to be sure that the previous value has been decided
-        while (lastDecidedConsensusInstance.get() < localConsensusInstance - 1) {
+        /*while (lastDecidedConsensusInstance.get() < localConsensusInstance - 1) {
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-        }
+        }*/
 
         InstanceInfo instance = this.instanceInfo.get(localConsensusInstance);
         instance.setTimer(createTimerTask(localConsensusInstance, null));
@@ -338,11 +340,6 @@ public class NodeService implements UDPService {
                         "{0} - Received PRE-PREPARE message from {1} Consensus Instance {2}, Round {3}",
                         config.getId(), senderId, consensusInstanceMessage, round));
 
-        /*
-         * Verify also if correct instance if not return
-         * */
-        if (lastDecidedConsensusInstance.get() + 1 != consensusInstanceMessage)
-            return;
         // Set instance value
         if (this.instanceInfo.putIfAbsent(consensusInstanceMessage, new InstanceInfo(null)) == null) {
             this.instanceInfo.get(consensusInstanceMessage).setTimer(createTimerTask(consensusInstanceMessage, null));
@@ -559,26 +556,67 @@ public class NodeService implements UDPService {
             instance.setCommittedRound(round);
 
             String value = commitValue.get();
-
-
+            int times = 0;
             // Append value to the ledger (must be synchronized to be thread-safe)
             synchronized(ledger) {
+                if(consensusInstance != lastDecidedConsensusInstance.get()+1){
+                    finishedEpochs.put(consensusInstance, value);
+                    LOGGER.log(Level.INFO,
+                            MessageFormat.format(
+                                    "{0} - Added to instance buffer: ({1}, {2})",
+                                    config.getId(), consensusInstance, value));
+                    boolean flag = true;
+                    synchronized(lastDecidedConsensusInstance) {
+                        int consensusInstanceLast = lastDecidedConsensusInstance.get() + 1;
+                        while (flag) {
+                            if (finishedEpochs.get(consensusInstanceLast + times) != null) {
+                                ledger.ensureCapacity(consensusInstanceLast + times);
+                                while (ledger.size() < consensusInstanceLast+ times - 1) {
+                                    ledger.add("");
+                                }
 
-                // Increment size of ledger to accommodate current instance
-                ledger.ensureCapacity(consensusInstance);
-                while (ledger.size() < consensusInstance - 1) {
-                    ledger.add("");
+                                ledger.add(consensusInstanceLast + times - 1, finishedEpochs.get(consensusInstanceLast + times));
+                                finishedEpochs.remove(consensusInstanceLast + times);
+                                times++;
+                            } else {
+                                flag = false;
+                            }
+                        }
+                    }
+                } else {
+
+                    // Increment size of ledger to accommodate current instance
+                    ledger.ensureCapacity(consensusInstance);
+                    while (ledger.size() < consensusInstance - 1) {
+                        ledger.add("");
+                    }
+
+                    ledger.add(consensusInstance - 1, value);
+                    times++;
+                    boolean flag = true;
+                    while(flag) {
+                        if (finishedEpochs.get(consensusInstance+times) != null){
+                            ledger.ensureCapacity(consensusInstance+times);
+                            while (ledger.size() < consensusInstance+times - 1) {
+                                ledger.add("");
+                            }
+
+                            ledger.add(consensusInstance+times - 1, finishedEpochs.get(consensusInstance+times));
+                            finishedEpochs.remove(consensusInstance+times);
+                            times++;
+                        } else {
+                            flag = false;
+                        }
+                    }
+                    LOGGER.log(Level.INFO,
+                            MessageFormat.format(
+                                    "{0} - Current Ledger: {1}",
+                                    config.getId(), String.join("", ledger)));
                 }
-
-                ledger.add(consensusInstance - 1, value);
-
-                LOGGER.log(Level.INFO,
-                        MessageFormat.format(
-                                "{0} - Current Ledger: {1}",
-                                config.getId(), String.join("", ledger)));
             }
-
-            lastDecidedConsensusInstance.getAndIncrement();
+            for (int i = 0; i < times; i++){
+                lastDecidedConsensusInstance.getAndIncrement();
+            }
 
             // TODO - tem de se ter f+1 ds iguais para se fazer isso?
             //clientRepository.messageDone(message.getClient().getSenderId(), message.getClient().getMessageId());
