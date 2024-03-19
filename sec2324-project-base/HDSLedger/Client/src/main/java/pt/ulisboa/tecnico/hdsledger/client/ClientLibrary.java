@@ -1,4 +1,6 @@
 package pt.ulisboa.tecnico.hdsledger.client;
+import java.security.PublicKey;
+import java.util.Scanner;
 import pt.ulisboa.tecnico.hdsledger.communication.Link;
 //import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
@@ -10,6 +12,8 @@ import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.HashMap;
 import java.util.Map;
+
+import static pt.ulisboa.tecnico.hdsledger.utilities.CryptoLibrary.readPublicKey;
 
 
 public class ClientLibrary {
@@ -23,17 +27,37 @@ public class ClientLibrary {
     private int quorumSize;
     private int msgCounter = 0;
 
+    private String keysPath;
+
     private static String nodeKeysPath = "../Service/src/main/resources/keys/";
 
-    public ClientLibrary(Link linkToNodes, ProcessConfig config, ProcessConfig[] nodesConfig) {
+    public ClientLibrary(Link linkToNodes, ProcessConfig config, ProcessConfig[] nodesConfig, String keysPath) {
         this.link = linkToNodes;
         this.nodeConfig = config;
         this.nodeConfigs = nodesConfig;
         int nodeCount = this.nodeConfigs.length;
         int f = Math.floorDiv(nodeCount - 1, 3);
         quorumSize = Math.floorDiv(nodeCount + f, 2) + 1;
+        this.keysPath = keysPath;
 
         listen();
+    }
+
+    public void transfer(String src_account, String dest_account, int amount) {
+        System.out.println("Sending transfer request { src: " +
+                            src_account + " ;dst: " + dest_account +
+                            " ;amount: " + amount + " }");
+
+        PublicKey src_pub_key = readPublicKey(keysPath + "key_" + src_account + "_pub.key");
+        PublicKey dest_pub_key = readPublicKey(keysPath + "key_" + dest_account + "_pub.key");
+        // Build transfer Message
+    }
+
+    public void check_balance(String account){
+        System.out.println("Sending transfer request { account: " + account + " }");
+
+        PublicKey src_pub_key = readPublicKey(keysPath + "key_" + account + "_pub.key");
+        // Build transfer Message
     }
 
     public void send(String msg) {
