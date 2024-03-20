@@ -163,8 +163,34 @@ public class NodeService implements UDPService {
                 .build();
         this.link.send(client.getSenderId(), consensusMessage);
     }
+    public void checkBalanceOrTransfer(ConsensusMessage client) {
+        ClientMessage cl = client.deserializeClientMessage();
+        //Send ACK_CLIENT to client
+        createAndSendClientResponseMessage(client, cl);
+        System.out.println("AMOUNT: "+ client.getSenderId() +" "+ client.getMessageId() +":::" + accounts.get(cl.getPubSource()).getAmount()+ "-----------------------------------");
+    }
+    public int  applyTransactionsFromBuffer(int consensusInstance, int times) {
+        boolean flag = true;
+        while(flag) {
+            if (finishedEpochs.get(consensusInstance+times) != null){
+                ConsensusMessage client = finishedEpochs.get(consensusInstance+times);
+                ledger.ensureCapacity(consensusInstance+times);
+                while (ledger.size() < consensusInstance+times - 1) {
+                    ledger.add(null);
+                }
 
-        public Timer createTimerTask(int localConsensusInstance, Timer timer){
+                ledger.add(consensusInstance+times - 1, client);
+                // FAZ COISAS RESPONDE AO CLIENT E FAZ TRANSACTION
+                checkBalanceOrTransfer(client);
+                finishedEpochs.remove(consensusInstance+times);
+                times++;
+            } else {
+                flag = false;
+            }
+        }
+        return times;
+    }
+    public Timer createTimerTask(int localConsensusInstance, Timer timer){
         TimerTask task = new InstanceTimerTask(localConsensusInstance) {
             @Override
             public void run() {
@@ -607,33 +633,11 @@ public class NodeService implements UDPService {
                             MessageFormat.format(
                                     "{0} - Added to instance buffer: ({1}, {2} ,{3})",
                                     config.getId(), consensusInstance, value.getSenderId(), value.getMessageId()));
-                    boolean flag = true;
                     synchronized(lastDecidedConsensusInstance) {
                         int consensusInstanceLast = lastDecidedConsensusInstance.get() + 1;
-                        while (flag) {
-                            if (finishedEpochs.get(consensusInstanceLast + times) != null) {
-                                ConsensusMessage client = finishedEpochs.get(consensusInstanceLast+times);
-                                ClientMessage cl = client.deserializeClientMessage();
-                                ledger.ensureCapacity(consensusInstanceLast + times);
-                                while (ledger.size() < consensusInstanceLast+ times - 1) {
-                                    ledger.add(null);
-                                }
-
-                                ledger.add(consensusInstanceLast + times - 1, client);
-                                // FAZ COISAS RESPONDE AO CLIENT E FAZ TRANSACTION
-                                //Send ACK_CLIENT to client
-                                createAndSendClientResponseMessage(client, cl);
-                                System.out.println("AMOUNT: "+ value.getSenderId() +" "+ client.getMessageId() +":::" + accounts.get(cl.getPubSource()).getAmount()+ "-----------------------------------");
-                                finishedEpochs.remove(consensusInstanceLast + times);
-                                times++;
-                            } else {
-                                flag = false;
-                            }
-                        }
+                        times = applyTransactionsFromBuffer(consensusInstanceLast, times);
                     }
                 } else {
-                    ClientMessage cl = value.deserializeClientMessage();
-
                     // Increment size of ledger to accommodate current instance
                     ledger.ensureCapacity(consensusInstance);
                     while (ledger.size() < consensusInstance - 1) {
@@ -642,33 +646,9 @@ public class NodeService implements UDPService {
 
                     ledger.add(consensusInstance - 1, value);
                     // FAZ COISAS RESPONDE AO CLIENT E FAZ TRANSACTION
-                    //Send ACK_CLIENT to client
-                    createAndSendClientResponseMessage(value, cl);
-                    System.out.println("AMOUNT: " + value.getSenderId() +" "+ value.getMessageId() +":::" + accounts.get(cl.getPubSource()).getAmount()+ "-----------------------------------");
+                    checkBalanceOrTransfer(value);
                     times++;
-                    boolean flag = true;
-                    while(flag) {
-                        if (finishedEpochs.get(consensusInstance+times) != null){
-                            ConsensusMessage client = finishedEpochs.get(consensusInstance+times);
-                            cl = client.deserializeClientMessage();
-                            ledger.ensureCapacity(consensusInstance+times);
-                            while (ledger.size() < consensusInstance+times - 1) {
-                                ledger.add(null);
-                            }
-
-                            ledger.add(consensusInstance+times - 1, client);
-                            // FAZ COISAS RESPONDE AO CLIENT E FAZ TRANSACTION
-                            //Send ACK_CLIENT to client
-                            // MYDAR DEPOIS PARA AS TRANSAC
-                            createAndSendClientResponseMessage(client, cl);
-                            System.out.println("AMOUNT: "+ client.getSenderId() +" "+ client.getMessageId() +":::" + accounts.get(cl.getPubSource()).getAmount()+ "-----------------------------------");
-
-                            finishedEpochs.remove(consensusInstance+times);
-                            times++;
-                        } else {
-                            flag = false;
-                        }
-                    }
+                    times = applyTransactionsFromBuffer(consensusInstance,times);
                     //LOGGER.log(Level.INFO,
                     //        MessageFormat.format(
                     //               "{0} - Current Ledger: {1}",
