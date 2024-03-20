@@ -18,14 +18,10 @@ public class ConsensusMessage extends Message {
     // Message (PREPREPARE, PREPARE, COMMIT)
     private String message;
 
-    // Client message
-    private ConsensusMessage client;
     // Valid Messages Quorum
     private String validQ = null;
     // Digital Signature (Base64)
     private String DS;
-    private int preparedRound = -1;
-    private String preparedValue;
 
     public ConsensusMessage(String senderId, Type type) {
         super(senderId, type);
@@ -34,7 +30,6 @@ public class ConsensusMessage extends Message {
         return validQ;
     }
     public void setValidQ(ArrayList<ConsensusMessage> validQ) {
-        //System.out.println("TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"+(validQ == null));
         if(validQ == null) {
                 this.validQ = null;
                 return;
@@ -45,28 +40,9 @@ public class ConsensusMessage extends Message {
         if(this.validQ == null) return null;
         return (ArrayList<ConsensusMessage>) ObjToString.stringToObj(this.validQ);
     }
-    public int getPreparedRound() {
-        return preparedRound;
-    }
 
-    public void setPreparedRound(int preparedRound) {
-        this.preparedRound = preparedRound;
-    }
-
-    public String getPreparedValue() {
-        return preparedValue;
-    }
-
-    public void setPreparedValue(String preparedValue) {
-        this.preparedValue = preparedValue;
-    }
-
-    public ConsensusMessage getClient() {
-        return client;
-    }
-
-    public void setClient(ConsensusMessage client) {
-        this.client = client;
+    public String toJson() {
+        return new Gson().toJson(this);
     }
 
     public String getDS() {
@@ -97,8 +73,11 @@ public class ConsensusMessage extends Message {
     public CommitMessage deserializeCommitMessage() {
         return new Gson().fromJson(this.message, CommitMessage.class);
     }
-
+    public RoundChangeMessage deserializeRoundChangeMessage() {
+        return new Gson().fromJson(this.message, RoundChangeMessage.class);
+    }
     public ClientMessage deserializeClientMessage() {
+        if(this.message==null) return null;
         return new Gson().fromJson(this.message, ClientMessage.class);
     }
 
@@ -141,4 +120,35 @@ public class ConsensusMessage extends Message {
     public void setReplyToMessageId(int replyToMessageId) {
         this.replyToMessageId = replyToMessageId;
     }
+    /*@Override
+    public boolean equals(Object obj) {
+        if (obj == null) return false;
+        if (obj.getClass() != this.getClass()) return false;
+        ConsensusMessage other = (ConsensusMessage) obj;
+        if(this.replyTo == null){
+            if (other.getReplyTo() != null) return false;
+        }
+        else if(!this.replyTo.equals(other.getReplyTo())) return false;
+
+        if(this.message == null){
+            if (other.getMessage() != null) return false;
+        }
+        else if(!this.message.equals(other.getMessage())) return false;
+
+        if(this.validQ == null){
+            if (other.getValidQ() != null) return false;
+        }
+        else if(!this.validQ.equals(other.getValidQ())) return false;
+
+        if(this.DS == null){
+            if (other.getDS() != null) return false;
+        }
+        else if(!this.DS.equals(other.getDS())) return false;
+
+        if(this.consensusInstance != other.getConsensusInstance() || this.round != other.getRound() ||
+              this.replyToMessageId != other.getReplyToMessageId()) return false;
+
+        if(!super.equals(other)) return false;
+        return true;
+    }*/
 }

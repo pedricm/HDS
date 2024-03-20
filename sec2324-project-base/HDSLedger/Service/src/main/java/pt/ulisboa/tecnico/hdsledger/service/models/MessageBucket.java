@@ -12,6 +12,7 @@ import pt.ulisboa.tecnico.hdsledger.communication.CommitMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.PrepareMessage;
 import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
+import pt.ulisboa.tecnico.hdsledger.communication.RoundChangeMessage;
 
 public class MessageBucket {
 
@@ -134,12 +135,13 @@ public class MessageBucket {
         HashMap<Integer, ArrayList<ConsensusMessage>> roundToMessages = new HashMap<>();
         if (bucket.get(instance).get(round) == null) return Optional.empty();
         bucket.get(instance).get(round).values().forEach((message) -> {
+                RoundChangeMessage rcm = message.deserializeRoundChangeMessage();
                 int message_round = message.getRound();
                 frequency.put(message_round, frequency.getOrDefault(message_round, 0) + 1);
                 roundToMessages.computeIfAbsent(message_round, k -> new ArrayList<>()).add(message);
-                if(message.getPreparedRound() > cmround[0]){
-                    cmround[0] = message.getPreparedRound();
-                    cmVal[0] = message.getPreparedValue();
+                if(rcm.getPreparedRound() > cmround[0]){
+                    cmround[0] = rcm.getPreparedRound();
+                    cmVal[0] = rcm.getPreparedValue();
                 }
             });
 
@@ -166,7 +168,8 @@ public class MessageBucket {
         int i = 0;
         boolean flag = false;
         while (over > 0){
-            if(!flag && nq.get(i).getPreparedRound() == prepI && nq.get(i).getPreparedValue() != null && prepVal != null && nq.get(i).getPreparedValue().equals(prepVal)){
+            RoundChangeMessage rcm = nq.get(i).deserializeRoundChangeMessage();
+            if(!flag && rcm.getPreparedRound() == prepI && rcm.getPreparedValue() != null && prepVal != null && rcm.getPreparedValue().equals(prepVal)){
                 flag = true;
                 i++;
             } else {

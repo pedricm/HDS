@@ -2,25 +2,32 @@ package pt.ulisboa.tecnico.hdsledger.communication;
 
 import com.google.gson.Gson;
 import java.security.PublicKey;
+import pt.ulisboa.tecnico.hdsledger.utilities.CryptoLibrary;
 
 public class ClientMessage {
 
-    private PublicKey pubSource;
-    private PublicKey pubDest = null;
+    private String pubSource;
+    private String pubDest = null;
     private int amount = -1;
 
     public ClientMessage(PublicKey pubSource, PublicKey pubDest, int amount) {
-        this.pubSource = pubSource;
-        this.pubDest = pubDest;
+        this.pubSource = CryptoLibrary.pubKeyToString(pubSource);
+        this.pubDest = CryptoLibrary.pubKeyToString(pubDest);
         this.amount = amount;
     }
     public ClientMessage(PublicKey pubSource) {
-        this.pubSource = pubSource;
+        this.pubSource = CryptoLibrary.pubKeyToString(pubSource);
     }
 
-    public PublicKey getPubSource() { return pubSource; }
+    public PublicKey getPubSource() {
+        if(this.pubSource == null) return null;
+        return CryptoLibrary.stringToPubKey(this.pubSource);
+    }
 
-    public PublicKey getPubDest() { return pubDest; }
+    public PublicKey getPubDest() {
+        if(this.pubDest == null) return null;
+        return CryptoLibrary.stringToPubKey(this.pubDest);
+    }
 
     public int getAmount() { return amount; }
 

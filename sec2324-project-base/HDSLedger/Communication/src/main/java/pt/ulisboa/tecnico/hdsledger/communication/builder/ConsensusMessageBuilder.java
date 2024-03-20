@@ -10,10 +10,6 @@ public class ConsensusMessageBuilder {
     public ConsensusMessageBuilder(String sender, Message.Type type) {
         instance = new ConsensusMessage(sender, type);
     }
-    public ConsensusMessageBuilder setClient(ConsensusMessage consensusMessage) {
-        instance.setClient(consensusMessage);
-        return this;
-    }
     public ConsensusMessageBuilder setDS(String keysPath) {
         instance.setDS(keysPath);
         return this;
@@ -36,14 +32,6 @@ public class ConsensusMessageBuilder {
         instance.setRound(round);
         return this;
    }
-    public ConsensusMessageBuilder setPreparedRound(int preparedRound) {
-        instance.setPreparedRound(preparedRound);
-        return this;
-    }
-    public ConsensusMessageBuilder setPreparedValue(String preparedValue) {
-        instance.setPreparedValue(preparedValue);
-        return this;
-    }
    public ConsensusMessageBuilder setReplyTo(String replyTo) {
         instance.setReplyTo(replyTo);
         return this;
