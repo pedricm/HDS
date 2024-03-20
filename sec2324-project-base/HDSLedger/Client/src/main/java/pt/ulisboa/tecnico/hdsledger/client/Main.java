@@ -15,6 +15,8 @@ public class Main {
     private static final CustomLogger LOGGER = new CustomLogger(Main.class.getName());
     private static String nodesConfigPath = "../Service/src/main/resources/";
 
+    private static String keysPath = "../Service/src/main/resources/keys/";
+
     public static void main(String[] args) {
             try {
                 // Command line arguments
@@ -38,20 +40,42 @@ public class Main {
                 Link linkToNodes = new Link(ClientConfig, ClientConfig.getPort(), nodeConfigs, clientConfigs,
                         ConsensusMessage.class);
 
-                Client client = new Client(linkToNodes, ClientConfig, nodeConfigs);
+                Client client = new Client(linkToNodes, ClientConfig, nodeConfigs, keysPath);
                 Scanner parser = new Scanner(System.in);
 
                 printUsage();
 
                 while (true) {
+                    System.out.println("Type \"help\", for more information");
                     System.out.print("> ");
                     String command = parser.nextLine();  // Read user input
 
-                    if (command.equals("/q")) {
+                    /*if (command.equals("/q")) {
                         System.out.println("Quiting!");
                         return;
+                    }*/
+
+                    switch(command) {
+                        case "quit":
+                            System.out.println("Quiting!");
+                            return;
+                        case "help":
+                            System.out.print("\tAvailable commands:\n" +
+                                    "transfer: transfer money between 2 accounts\n" +
+                                    "check_balance: obtain the balance a given account\n" +
+                                    "quit: exit program\n\n");
+                            break;
+                        case "transfer":
+                            client.transfer();
+                            break;
+                        case "check_balance":
+                            client.check_balance();
+                            break;
+                        default:
+                            client.send(command);
+                            break;
                     }
-                    client.send(command);
+
                 }
             } catch (Exception e) {
                 e.printStackTrace();
