@@ -19,6 +19,10 @@ public class ClientMessage {
         this.pubSource = CryptoLibrary.pubKeyToString(pubSource);
     }
 
+    public void setAmount(int amount) {
+        this.amount = amount;
+    }
+
     public PublicKey getPubSource() {
         if(this.pubSource == null) return null;
         return CryptoLibrary.stringToPubKey(this.pubSource);

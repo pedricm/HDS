@@ -112,8 +112,6 @@ public class NodeService implements UDPService {
     public ConsensusMessage createConsensusMessage(ConsensusMessage value, int instance, int round, ArrayList<ConsensusMessage> roundChange) {
         PrePrepareMessage prePrepareMessage = new PrePrepareMessage(value);
         ConsensusMessage consensusMessage;
-        // TODO Ja se pode juntar tudo no mesmo
-        if(roundChange == null) {
             /*if (config.getTest(2)) {
                 ConsensusMessage ms = clientMessage;
                 ms.setMessage("bizantine message");
@@ -122,22 +120,13 @@ public class NodeService implements UDPService {
                         .setRound(round)
                         .setMessage(prePrepareMessage.toJson())
                         .setClient(ms)
-                        .build();
-            } else {*/
-                consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.PRE_PREPARE)
-                        .setConsensusInstance(instance)
-                        .setRound(round)
-                        .setMessage(prePrepareMessage.toJson())
-                        .build();
-            //}
-        } else {
-            consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.PRE_PREPARE)
-                    .setConsensusInstance(instance)
-                    .setRound(round)
-                    .setMessage(prePrepareMessage.toJson())
-                    .setValidQ(roundChange)
-                    .build();
-        }
+                        .build();*/
+        consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.PRE_PREPARE)
+                .setConsensusInstance(instance)
+                .setRound(round)
+                .setMessage(prePrepareMessage.toJson())
+                .setValidQ(roundChange)
+                .build();
 
 
         return consensusMessage;
@@ -165,7 +154,17 @@ public class NodeService implements UDPService {
 
         return consensusMessage;
     }
-    public Timer createTimerTask(int localConsensusInstance, Timer timer){
+    public void createAndSendClientResponseMessage(ConsensusMessage client, ClientMessage cl) {
+        ClientResponseMessage clr = new ClientResponseMessage(accounts.get(cl.getPubSource()).getAmount(), true);
+        ConsensusMessage consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.ACK_CLIENT)
+                .setReplyTo(client.getSenderId())
+                .setReplyToMessageId(client.getMessageId())
+                .setMessage(clr.toJson())
+                .build();
+        this.link.send(client.getSenderId(), consensusMessage);
+    }
+
+        public Timer createTimerTask(int localConsensusInstance, Timer timer){
         TimerTask task = new InstanceTimerTask(localConsensusInstance) {
             @Override
             public void run() {
@@ -381,7 +380,13 @@ public class NodeService implements UDPService {
                             config.getId(), consensusInstanceMessage, round));
         }
         PrepareMessage prepareMessage;
-        if(config.getTest(5)) prepareMessage = new PrepareMessage("bizantine message");
+        if(config.getTest(5)){
+            ConsensusMessage biz = message.deserializePrePrepareMessage().deserializeValue();
+            ClientMessage cl = biz.deserializeClientMessage();
+            cl.setAmount(100000000);
+            biz.setMessage(cl.toJson());
+            prepareMessage = new PrepareMessage(biz.toJson());
+        }
         else prepareMessage = new PrepareMessage(message.deserializePrePrepareMessage().getValue());
 
         ConsensusMessage consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.PREPARE)
@@ -418,7 +423,7 @@ public class NodeService implements UDPService {
         }
 
         // CHECKS VALUE
-        ConsensusMessage clientMessage = message.deserializePrepareMessage().deserializeValue();
+        /*ConsensusMessage clientMessage = message.deserializePrepareMessage().deserializeValue();
         if (clientMessage == null || !clientMessage.checkDS(this.keysPath)) {
             LOGGER.log(Level.INFO,
                     MessageFormat.format(
@@ -427,7 +432,7 @@ public class NodeService implements UDPService {
             return;
         }
         // MESSAGE CHECKS
-        if(!clientMessageCheck(clientMessage))return;
+        if(!clientMessageCheck(clientMessage))return;*/
 
         LOGGER.log(Level.INFO,
                 MessageFormat.format(
@@ -547,7 +552,7 @@ public class NodeService implements UDPService {
             });
         } else {
             // CHECKS VALUE
-            ConsensusMessage clientMessage = message.deserializeCommitMessage().deserializeValue();
+            /*ConsensusMessage clientMessage = message.deserializeCommitMessage().deserializeValue();
             if (clientMessage == null || !clientMessage.checkDS(this.keysPath)) {
                 LOGGER.log(Level.INFO,
                         MessageFormat.format(
@@ -556,7 +561,7 @@ public class NodeService implements UDPService {
                 return;
             }
             // MESSAGE CHECKS
-            if(!clientMessageCheck(clientMessage))return;
+            if(!clientMessageCheck(clientMessage))return;*/
             LOGGER.log(Level.INFO,
                     MessageFormat.format("{0} - Received COMMIT message from {1}: Consensus Instance {2}, Round {3}",
                             config.getId(), message.getSenderId(), consensusInstance, round));
@@ -617,13 +622,7 @@ public class NodeService implements UDPService {
                                 ledger.add(consensusInstanceLast + times - 1, client);
                                 // FAZ COISAS RESPONDE AO CLIENT E FAZ TRANSACTION
                                 //Send ACK_CLIENT to client
-                                ClientResponseMessage clr = new ClientResponseMessage(accounts.get(cl.getPubSource()).getAmount(), true);
-                                ConsensusMessage consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.ACK_CLIENT)
-                                        .setReplyTo(client.getSenderId())
-                                        .setReplyToMessageId(client.getMessageId())
-                                        .setMessage(clr.toJson())
-                                        .build();
-                                this.link.send(client.getSenderId(), consensusMessage);
+                                createAndSendClientResponseMessage(client, cl);
                                 System.out.println("AMOUNT: "+ value.getSenderId() +" "+ client.getMessageId() +":::" + accounts.get(cl.getPubSource()).getAmount()+ "-----------------------------------");
                                 finishedEpochs.remove(consensusInstanceLast + times);
                                 times++;
@@ -644,13 +643,7 @@ public class NodeService implements UDPService {
                     ledger.add(consensusInstance - 1, value);
                     // FAZ COISAS RESPONDE AO CLIENT E FAZ TRANSACTION
                     //Send ACK_CLIENT to client
-                    ClientResponseMessage clr = new ClientResponseMessage(accounts.get(cl.getPubSource()).getAmount(), true);
-                    ConsensusMessage consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.ACK_CLIENT)
-                            .setReplyTo(value.getSenderId())
-                            .setReplyToMessageId(value.getMessageId())
-                            .setMessage(clr.toJson())
-                            .build();
-                    this.link.send(value.getSenderId(), consensusMessage);
+                    createAndSendClientResponseMessage(value, cl);
                     System.out.println("AMOUNT: " + value.getSenderId() +" "+ value.getMessageId() +":::" + accounts.get(cl.getPubSource()).getAmount()+ "-----------------------------------");
                     times++;
                     boolean flag = true;
@@ -667,13 +660,7 @@ public class NodeService implements UDPService {
                             // FAZ COISAS RESPONDE AO CLIENT E FAZ TRANSACTION
                             //Send ACK_CLIENT to client
                             // MYDAR DEPOIS PARA AS TRANSAC
-                            clr = new ClientResponseMessage(accounts.get(cl.getPubSource()).getAmount(), true);
-                            consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.ACK_CLIENT)
-                                    .setReplyTo(client.getSenderId())
-                                    .setReplyToMessageId(client.getMessageId())
-                                    .setMessage(clr.toJson())
-                                    .build();
-                            this.link.send(client.getSenderId(), consensusMessage);
+                            createAndSendClientResponseMessage(client, cl);
                             System.out.println("AMOUNT: "+ client.getSenderId() +" "+ client.getMessageId() +":::" + accounts.get(cl.getPubSource()).getAmount()+ "-----------------------------------");
 
                             finishedEpochs.remove(consensusInstance+times);
