@@ -21,6 +21,12 @@ public class Account {
     public int getAmount() {
         return amount;
     }
+    public void transfer(int amount) {
+        this.amount -= amount;
+    }
+    public void deposit(int amount) {
+        this.amount += amount;
+    }
     public boolean checkTransaction(int value){
         if(amount-value < 0) return false;
         return true;

@@ -163,11 +163,37 @@ public class NodeService implements UDPService {
                 .build();
         this.link.send(client.getSenderId(), consensusMessage);
     }
+    public void createAndSendClientResponseMessageTransfer(ConsensusMessage client, boolean ack) {
+        ClientResponseMessage clr = new ClientResponseMessage(-2, ack);
+        ConsensusMessage consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.ACK_CLIENT)
+                .setReplyTo(client.getSenderId())
+                .setReplyToMessageId(client.getMessageId())
+                .setMessage(clr.toJson())
+                .build();
+        this.link.send(client.getSenderId(), consensusMessage);
+    }
     public void checkBalanceOrTransfer(ConsensusMessage client) {
         ClientMessage cl = client.deserializeClientMessage();
-        //Send ACK_CLIENT to client
-        createAndSendClientResponseMessage(client, cl);
-        System.out.println("AMOUNT: "+ client.getSenderId() +" "+ client.getMessageId() +":::" + accounts.get(cl.getPubSource()).getAmount()+ "-----------------------------------");
+        int amount = cl.getAmount();
+        // CHECK_BALANCE
+        if(cl.getPubDest() == null && amount == -1){
+            //Send ACK_CLIENT to client
+            createAndSendClientResponseMessage(client, cl);
+            System.out.println("AMOUNT: "+ client.getSenderId() +" : "+ client.getMessageId() +" : " + accounts.get(cl.getPubSource()).getAmount()+ "-----------------------------------");
+        }
+        // TRANSFER
+        else {
+            if (cl.getPubDest() == null || amount == -1 || !accounts.get(cl.getPubSource()).checkTransaction(amount)){
+                createAndSendClientResponseMessageTransfer(client, false);
+                System.out.println("FAILED TRANSFER: "+ client.getSenderId() +" : "+ client.getMessageId() +" : " + accounts.get(cl.getPubSource()).getAmount() + " " + accounts.get(cl.getPubDest()).getAmount() + "-----------------------------------");
+                return;
+            }
+            System.out.println("BEFORE TRANSFER: "+ client.getSenderId() +" : "+ client.getMessageId() +" : " + accounts.get(cl.getPubSource()).getAmount() + " " + accounts.get(cl.getPubDest()).getAmount() + "-----------------------------------");
+            accounts.get(cl.getPubSource()).transfer(amount);
+            accounts.get(cl.getPubDest()).deposit(amount);
+            createAndSendClientResponseMessageTransfer(client, true);
+            System.out.println("AFTER TRANSFER: "+ client.getSenderId() +" : "+ client.getMessageId() +" : " + accounts.get(cl.getPubSource()).getAmount() + " " + accounts.get(cl.getPubDest()).getAmount() + "-----------------------------------");
+        }
     }
     public int  applyTransactionsFromBuffer(int consensusInstance, int times) {
         boolean flag = true;
