@@ -1,15 +1,20 @@
 package pt.ulisboa.tecnico.hdsledger.client;
+import java.security.PublicKey;
+import java.util.Scanner;
 import pt.ulisboa.tecnico.hdsledger.communication.Link;
 //import pt.ulisboa.tecnico.hdsledger.utilities.CustomLogger;
 import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
 import pt.ulisboa.tecnico.hdsledger.communication.Message;
 import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
+import pt.ulisboa.tecnico.hdsledger.communication.ClientMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.builder.ConsensusMessageBuilder;
 
 import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.HashMap;
 import java.util.Map;
+
+import static pt.ulisboa.tecnico.hdsledger.utilities.CryptoLibrary.readPublicKey;
 
 
 public class ClientLibrary {
@@ -23,26 +28,46 @@ public class ClientLibrary {
     private int quorumSize;
     private int msgCounter = 0;
 
-    private static String nodeKeysPath = "../Service/src/main/resources/keys/";
+    private static String keysPath;
 
-    public ClientLibrary(Link linkToNodes, ProcessConfig config, ProcessConfig[] nodesConfig) {
+    public ClientLibrary(Link linkToNodes, ProcessConfig config, ProcessConfig[] nodesConfig, String keysPath) {
         this.link = linkToNodes;
         this.nodeConfig = config;
         this.nodeConfigs = nodesConfig;
         int nodeCount = this.nodeConfigs.length;
         int f = Math.floorDiv(nodeCount - 1, 3);
         quorumSize = Math.floorDiv(nodeCount + f, 2) + 1;
+        this.keysPath = keysPath;
 
         listen();
     }
 
-    public void send(String msg) {
-        System.out.println("Sending command: " + msg);
+    public void transfer(String dest_account, int amount) {
+        System.out.println("Sending transfer request { src: " +
+                nodeConfig.getId() + " ;dst: " + dest_account +
+                " ;amount: " + amount + " }");
 
-        //PrepareMessage prepareMessage = new PrepareMessage(prePrepareMessage.getValue());
+        PublicKey src_pub_key = readPublicKey(keysPath + "key_" + nodeConfig.getId() + "_pub.key");
+        PublicKey dest_pub_key = readPublicKey(keysPath + "key_" + dest_account + "_pub.key");
+
+        ClientMessage cl = new ClientMessage(src_pub_key, dest_pub_key, amount);
+        send(cl);
+    }
+
+    public void check_balance(String account){
+        System.out.println("Sending transfer request { account: " + account + " }");
+
+        PublicKey src_pub_key = readPublicKey(keysPath + "key_" + account + "_pub.key");
+
+        // Build transfer Message
+        ClientMessage cl = new ClientMessage(src_pub_key);
+        send(cl);
+    }
+
+    public void send(ClientMessage msg) {
 
         ConsensusMessage consensusMessage = new ConsensusMessageBuilder(nodeConfig.getId(), Message.Type.APPEND)
-                .setMessage(msg)
+                .setMessage(msg.toJson())
                 .setReplyToMessageId(msgCounter++)
                 .build();
 
