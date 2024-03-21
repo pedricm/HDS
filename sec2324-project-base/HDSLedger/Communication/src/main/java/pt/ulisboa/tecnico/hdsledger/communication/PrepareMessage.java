@@ -2,13 +2,14 @@ package pt.ulisboa.tecnico.hdsledger.communication;
 
 import com.google.gson.Gson;
 import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
+import pt.ulisboa.tecnico.hdsledger.communication.BlockMessage;
 
 public class PrepareMessage {
     
     // Value
     private String value;
 
-    public PrepareMessage(ConsensusMessage value) {
+    public PrepareMessage(BlockMessage value) {
         this.value = value.toJson();
     }
     public PrepareMessage(String value) {
@@ -18,8 +19,8 @@ public class PrepareMessage {
     public String getValue() {
         return value;
     }
-    public ConsensusMessage deserializeValue() {
-        return new Gson().fromJson(this.value, ConsensusMessage.class);
+    public BlockMessage deserializeValue() {
+        return new Gson().fromJson(this.value, BlockMessage.class);
     }
 
     public String toJson() {

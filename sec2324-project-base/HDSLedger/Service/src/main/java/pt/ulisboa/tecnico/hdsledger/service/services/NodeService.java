@@ -23,6 +23,8 @@ import pt.ulisboa.tecnico.hdsledger.communication.Message;
 import pt.ulisboa.tecnico.hdsledger.communication.PrePrepareMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.RoundChangeMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.ClientResponseMessage;
+import pt.ulisboa.tecnico.hdsledger.communication.BlockMessage;
+import pt.ulisboa.tecnico.hdsledger.communication.TransactionMessage;
 
 import pt.ulisboa.tecnico.hdsledger.communication.PrepareMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.builder.ConsensusMessageBuilder;
@@ -65,15 +67,20 @@ public class NodeService implements UDPService {
     private final AtomicInteger lastDecidedConsensusInstance = new AtomicInteger(0);
 
     // Ledger (for now, just a list of strings)
-    private ArrayList<ConsensusMessage> ledger = new ArrayList<ConsensusMessage>();
+    private ArrayList<BlockMessage> ledger = new ArrayList<BlockMessage>();
 
-    private Map<Integer, ConsensusMessage> finishedEpochs = new ConcurrentHashMap<>();
+    private Map<Integer, BlockMessage> finishedEpochs = new ConcurrentHashMap<>();
 
     private String keysPath;
 
     private ClientRepository clientRepository = new ClientRepository();
 
     private Map<PublicKey, Account> accounts = new ConcurrentHashMap<>();
+    private ArrayList<ConsensusMessage> waitBuffer = new ArrayList<ConsensusMessage>();
+
+    private final int GASPRICE = 1;
+    private final int BLOCKSIZE = 2;
+
     public NodeService(Link link, ProcessConfig config, ProcessConfig[] nodesConfig, String keysPath) {
 
         this.link = link;
@@ -88,6 +95,10 @@ public class NodeService implements UDPService {
         accounts.put(CryptoLibrary.readPublicKey(keysPath + "key_5_pub.key"), new Account("5", 5000));
         accounts.put(CryptoLibrary.readPublicKey(keysPath + "key_6_pub.key"), new Account("6", 70));
         accounts.put(CryptoLibrary.readPublicKey(keysPath + "key_7_pub.key"), new Account("7", 4000));
+        accounts.put(CryptoLibrary.readPublicKey(keysPath + "key_1_pub.key"), new Account("1", 0));
+        accounts.put(CryptoLibrary.readPublicKey(keysPath + "key_2_pub.key"), new Account("2", 0));
+        accounts.put(CryptoLibrary.readPublicKey(keysPath + "key_3_pub.key"), new Account("3", 0));
+        accounts.put(CryptoLibrary.readPublicKey(keysPath + "key_4_pub.key"), new Account("4", 0));
     }
     public String getLeader(int instance, int round) {
         int N = nodesConfig.length;
@@ -101,7 +112,7 @@ public class NodeService implements UDPService {
         return this.consensusInstance.get();
     }
 
-    public ArrayList<ConsensusMessage> getLedger() {
+    public ArrayList<BlockMessage> getLedger() {
         return this.ledger;
     }
 
@@ -109,7 +120,7 @@ public class NodeService implements UDPService {
         return getLeader(instance, round).equals(id);
     }
  
-    public ConsensusMessage createConsensusMessage(ConsensusMessage value, int instance, int round, ArrayList<ConsensusMessage> roundChange) {
+    public ConsensusMessage createConsensusMessage(BlockMessage value, int instance, int round, ArrayList<ConsensusMessage> roundChange) {
         PrePrepareMessage prePrepareMessage = new PrePrepareMessage(value);
         ConsensusMessage consensusMessage;
             /*if (config.getTest(2)) {
@@ -172,34 +183,45 @@ public class NodeService implements UDPService {
                 .build();
         this.link.send(client.getSenderId(), consensusMessage);
     }
-    public void checkBalanceOrTransfer(ConsensusMessage client) {
-        ClientMessage cl = client.deserializeClientMessage();
-        int amount = cl.getAmount();
-        // CHECK_BALANCE
-        if(cl.getPubDest() == null && amount == -1){
-            //Send ACK_CLIENT to client
-            createAndSendClientResponseMessage(client, cl);
-            System.out.println("AMOUNT: "+ client.getSenderId() +" : "+ client.getMessageId() +" : " + accounts.get(cl.getPubSource()).getAmount()+ "-----------------------------------");
-        }
-        // TRANSFER
-        else {
-            if (cl.getPubDest() == null || amount == -1 || !accounts.get(cl.getPubSource()).checkTransaction(amount)){
-                createAndSendClientResponseMessageTransfer(client, false);
-                System.out.println("FAILED TRANSFER: "+ client.getSenderId() +" : "+ client.getMessageId() +" : " + accounts.get(cl.getPubSource()).getAmount() + " " + accounts.get(cl.getPubDest()).getAmount() + "-----------------------------------");
-                return;
+    public void checkBalanceOrTransfer(BlockMessage block) {
+        final String blockLeader = block.getLeaderId();
+        ArrayList<TransactionMessage> transactions = block.deserializeTransactions();
+        transactions.stream().forEach(transaction -> {
+            ConsensusMessage client = transaction.deserializeConsensusMessage();
+            ClientMessage cl = client.deserializeClientMessage();
+            int amount = cl.getAmount();
+            // CHECK_BALANCE
+            if(cl.getPubDest() == null && amount == -1){
+                //Send ACK_CLIENT to client
+                createAndSendClientResponseMessage(client, cl);
+                System.out.println("AMOUNT: "+ client.getSenderId() +" : "+ client.getMessageId() +" : " + accounts.get(cl.getPubSource()).getAmount()+ "-----------------------------------");
             }
-            System.out.println("BEFORE TRANSFER: "+ client.getSenderId() +" : "+ client.getMessageId() +" : " + accounts.get(cl.getPubSource()).getAmount() + " " + accounts.get(cl.getPubDest()).getAmount() + "-----------------------------------");
-            accounts.get(cl.getPubSource()).transfer(amount);
-            accounts.get(cl.getPubDest()).deposit(amount);
-            createAndSendClientResponseMessageTransfer(client, true);
-            System.out.println("AFTER TRANSFER: "+ client.getSenderId() +" : "+ client.getMessageId() +" : " + accounts.get(cl.getPubSource()).getAmount() + " " + accounts.get(cl.getPubDest()).getAmount() + "-----------------------------------");
-        }
+            // TRANSFER
+            else {
+                int gasPrice = transaction.getGas();
+                PublicKey pubKeyBLeader = CryptoLibrary.readPublicKey(keysPath + "key_"+ blockLeader +"_pub.key");
+                if (cl.getPubDest() == null || amount == -1 || !accounts.get(cl.getPubSource()).checkTransaction(amount+gasPrice)){
+                    createAndSendClientResponseMessageTransfer(client, false);
+                    System.out.println("FAILED TRANSFER: "+ client.getSenderId() +" : "+ client.getMessageId() +" : " + accounts.get(cl.getPubSource()).getAmount() + " " + accounts.get(cl.getPubDest()).getAmount() + " || " + blockLeader + " " + accounts.get(pubKeyBLeader).getAmount() + "-----------------------------------");
+                    return;
+                }
+                System.out.println("BEFORE TRANSFER: "+ client.getSenderId() +" : "+ client.getMessageId() +" : " + accounts.get(cl.getPubSource()).getAmount() + " " + accounts.get(cl.getPubDest()).getAmount() + "-----------------------------------");
+                System.out.println("BEFORE TRANSFER GAS: "+ client.getSenderId() +" : "+ client.getMessageId() +" : " + accounts.get(cl.getPubSource()).getAmount() +" || " + blockLeader + " " + accounts.get(pubKeyBLeader).getAmount() + "-----------------------------------");
+                accounts.get(cl.getPubSource()).transfer(amount);
+                accounts.get(cl.getPubDest()).deposit(amount);
+                System.out.println("AFTER TRANSFER: "+ client.getSenderId() +" : "+ client.getMessageId() +" : " + accounts.get(cl.getPubSource()).getAmount() + " " + accounts.get(cl.getPubDest()).getAmount() + "-----------------------------------");
+                accounts.get(cl.getPubSource()).transfer(gasPrice);
+                accounts.get(pubKeyBLeader).deposit(gasPrice);
+                System.out.println("AFTER TRANSFER GAS: "+ client.getSenderId() +" : "+ client.getMessageId() +" : " + accounts.get(cl.getPubSource()).getAmount() +" || " + blockLeader + " " + accounts.get(pubKeyBLeader).getAmount() + "-----------------------------------");
+                createAndSendClientResponseMessageTransfer(client, true);
+            }
+        });
     }
     public int  applyTransactionsFromBuffer(int consensusInstance, int times) {
         boolean flag = true;
         while(flag) {
             if (finishedEpochs.get(consensusInstance+times) != null){
-                ConsensusMessage client = finishedEpochs.get(consensusInstance+times);
+                BlockMessage client = finishedEpochs.get(consensusInstance+times);
                 ledger.ensureCapacity(consensusInstance+times);
                 while (ledger.size() < consensusInstance+times - 1) {
                     ledger.add(null);
@@ -267,7 +289,7 @@ public class NodeService implements UDPService {
      *
      * @param inputValue Value to value agreed upon
      */
-    public void startConsensus(ConsensusMessage message) {
+    public void addRequest(ConsensusMessage message) {
         /*
          *  Check msg DS and check if valid string
          * */
@@ -291,8 +313,29 @@ public class NodeService implements UDPService {
         // MESSAGE CHECKS
         if(!clientMessageCheck(message))return;
 
+        synchronized (waitBuffer) {
+            waitBuffer.add(message);
+            if(waitBuffer.size() >= BLOCKSIZE){
+                ArrayList<ConsensusMessage> requests = new ArrayList<>();
+                for (int i = 0 ; i<BLOCKSIZE; i++) {
+                    requests.add(waitBuffer.remove(0));
+                }
+                startConsensus(requests);
+            }
+        }
+    }
+    public void startConsensus(ArrayList<ConsensusMessage> requests) {
+        // CREATES THE BLOCKS
+        ArrayList<TransactionMessage> transactions = new ArrayList<>();
+        BlockMessage blockMessage;
+        requests.stream().forEach( message -> {
+            transactions.add(new TransactionMessage(message,GASPRICE));
+        });
+        blockMessage = new BlockMessage(transactions, this.config.getId());
+        blockMessage.setDS(keysPath);
+
         int localConsensusInstance = this.consensusInstance.incrementAndGet();
-        InstanceInfo existingConsensus = this.instanceInfo.put(localConsensusInstance, new InstanceInfo(message));
+        InstanceInfo existingConsensus = this.instanceInfo.put(localConsensusInstance, new InstanceInfo(blockMessage));
 
         // If startConsensus was already called for a given round
         if (existingConsensus != null) {
@@ -310,7 +353,7 @@ public class NodeService implements UDPService {
             if (config.getTest(3)) {
                 return;
             }
-            this.link.broadcast(this.createConsensusMessage(message, localConsensusInstance, instance.getCurrentRound(), null));
+            this.link.broadcast(this.createConsensusMessage(blockMessage, localConsensusInstance, instance.getCurrentRound(), null));
         } else {
             LOGGER.log(Level.INFO,
                     MessageFormat.format("{0} - Node is not leader, waiting for PRE-PREPARE message", config.getId()));
@@ -352,20 +395,38 @@ public class NodeService implements UDPService {
             return;
         }*/
         // CHECKS VALUE
-        ConsensusMessage clientMessage = message.deserializePrePrepareMessage().deserializeValue();
-        if (clientMessage == null || !clientMessage.checkDS(this.keysPath)) {
+        BlockMessage bm = message.deserializePrePrepareMessage().deserializeValue();
+        // This DS is only to guarantee the non repudiation of the block when appended
+        if (bm == null || !bm.checkDS(this.keysPath)) {
             LOGGER.log(Level.INFO,
                     MessageFormat.format(
-                            "{0} - Received PRE-PREPARE message from {1} Consensus Instance {2}, Round {3} with faulty DS of client message",
+                            "{0} - Received PRE-PREPARE message from {1} Consensus Instance {2}, Round {3} with faulty DS in BLOCKMESSAGE",
                             config.getId(), senderId, consensusInstanceMessage, round));
             return;
         }
+        ArrayList<TransactionMessage> transactions = bm.deserializeTransactions();
+        if(transactions.size() != BLOCKSIZE) return;
+        transactions.stream().forEach(transaction -> {
+            if(transaction.getGas() < 0) return;
 
-        // MESSAGE CHECKS
-        if(!clientMessageCheck(clientMessage))return;
+            ConsensusMessage clientMessage = transaction.deserializeConsensusMessage();
+            if (clientMessage == null || !clientMessage.checkDS(this.keysPath)) {
+                LOGGER.log(Level.INFO,
+                        MessageFormat.format(
+                                "{0} - Received PRE-PREPARE message from {1} Consensus Instance {2}, Round {3} with faulty DS of client message",
+                                config.getId(), senderId, consensusInstanceMessage, round));
+                return;
+            }
+
+            // MESSAGE CHECKS
+            if(!clientMessageCheck(clientMessage))return;
+        });
+
 
         if (message.getValidQ() == null) {
             if(message.getRound() != 1) return;
+            // Verify if sender is the block owner
+            if(!bm.getLeaderId().equals(senderId)) return;
         } else {
             if (message.getRound() == 1) return;
             //JUSTIFY PREPREPARE
@@ -399,7 +460,8 @@ public class NodeService implements UDPService {
                         cmround[0] = rcm.getPreparedRound();
                         cmVal[0] = rcm.getPreparedValue();
                     }
-                } else if (rcm.getPreparedRound() != -1 || rcm.getPreparedValue() != null || cm.getValidQ() != null) {
+                    // Verify if sender is the block owner and other things
+                } else if (rcm.getPreparedRound() != -1 || rcm.getPreparedValue() != null || cm.getValidQ() != null || !bm.getLeaderId().equals(senderId)) {
                     return;
                 }
             });
@@ -433,12 +495,23 @@ public class NodeService implements UDPService {
         }
         PrepareMessage prepareMessage;
         if(config.getTest(5)){
-            ConsensusMessage biz = message.deserializePrePrepareMessage().deserializeValue();
-            ClientMessage cl = biz.deserializeClientMessage();
+            BlockMessage biz = message.deserializePrePrepareMessage().deserializeValue();
+            transactions = bm.deserializeTransactions();
+            ConsensusMessage clientMessage = transactions.get(0).deserializeConsensusMessage();
+            ClientMessage cl = clientMessage.deserializeClientMessage();
             cl.setAmount(100000000);
-            biz.setMessage(cl.toJson());
+            clientMessage.setMessage(cl.toJson());
+            transactions.get(0).setClient(clientMessage);
+            biz.setTransactions(transactions);
             prepareMessage = new PrepareMessage(biz.toJson());
         }
+        /*else if (config.getTest(X)) {
+            BlockMessage biz = message.deserializePrePrepareMessage().deserializeValue();
+            biz.setLeaderId(this.config.getId());
+            biz.setDS(this.keysPath);
+            biz.setTransactions(transactions);
+            prepareMessage = new PrepareMessage(biz.toJson());
+        }*/
         else prepareMessage = new PrepareMessage(message.deserializePrePrepareMessage().getValue());
 
         ConsensusMessage consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.PREPARE)
@@ -649,7 +722,7 @@ public class NodeService implements UDPService {
             instance = this.instanceInfo.get(consensusInstance);
             instance.setCommittedRound(round);
 
-            ConsensusMessage value = new Gson().fromJson(commitValue.get(), ConsensusMessage.class);
+            BlockMessage value = new Gson().fromJson(commitValue.get(), BlockMessage.class);
             int times = 0;
             // Append value to the ledger (must be synchronized to be thread-safe)
             synchronized(ledger) {
@@ -657,8 +730,8 @@ public class NodeService implements UDPService {
                     finishedEpochs.put(consensusInstance, value);
                     LOGGER.log(Level.INFO,
                             MessageFormat.format(
-                                    "{0} - Added to instance buffer: ({1}, {2} ,{3})",
-                                    config.getId(), consensusInstance, value.getSenderId(), value.getMessageId()));
+                                    "{0} - Added to instance buffer: ({1}, {2})",
+                                    config.getId(), consensusInstance, value.getLeaderId()));
                     synchronized(lastDecidedConsensusInstance) {
                         int consensusInstanceLast = lastDecidedConsensusInstance.get() + 1;
                         times = applyTransactionsFromBuffer(consensusInstanceLast, times);
@@ -801,7 +874,7 @@ public class NodeService implements UDPService {
                 }
                 this.link.broadcast(this.createConsensusMessage(instance.getInputValue(), consensusInstance, instance.getCurrentRound(), validQ.get()));
             } else {
-                ConsensusMessage cm = new Gson().fromJson(cmVal.get()[0], ConsensusMessage.class);
+                BlockMessage cm = new Gson().fromJson(cmVal.get()[0], BlockMessage.class);
                 this.link.broadcast(this.createConsensusMessage(cm, consensusInstance, instance.getCurrentRound(), validQ.get()));
             }
         }
@@ -845,7 +918,7 @@ public class NodeService implements UDPService {
                                                     config.getId(), message.getSenderId()));
                                 // case append para iniciar consensus que vem do client
                                 case APPEND ->
-                                    startConsensus((ConsensusMessage) message);
+                                        addRequest((ConsensusMessage) message);
                                 /*
                                 * QUANDO receber append e nao for o lider da instancia guardar para ver o tempo que o lider demora depois de receber uma segunda confirmacao do client?? ou algo do genero
                                 * Ver se e ness alguem comecar uma nova round se o client fizer split brain

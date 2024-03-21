@@ -2,6 +2,7 @@ package pt.ulisboa.tecnico.hdsledger.communication;
 
 import com.google.gson.Gson;
 import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
+import pt.ulisboa.tecnico.hdsledger.communication.BlockMessage;
 
 public class RoundChangeMessage {
 
@@ -9,7 +10,7 @@ public class RoundChangeMessage {
     private String value = null;
     private int round =-1;
 
-    public RoundChangeMessage(ConsensusMessage value, int round) {
+    public RoundChangeMessage(BlockMessage value, int round) {
         this.value = value.toJson();
         this.round = round;
     }
@@ -26,8 +27,8 @@ public class RoundChangeMessage {
         return value;
     }
 
-    public ConsensusMessage deserializePreparedValue() {
-        return new Gson().fromJson(this.value, ConsensusMessage.class);
+    public BlockMessage deserializePreparedValue() {
+        return new Gson().fromJson(this.value, BlockMessage.class);
     }
 
     public String toJson() {

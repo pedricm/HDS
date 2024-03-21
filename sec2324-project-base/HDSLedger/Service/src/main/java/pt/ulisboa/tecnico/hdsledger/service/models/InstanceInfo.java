@@ -3,6 +3,7 @@ package pt.ulisboa.tecnico.hdsledger.service.models;
 
 import pt.ulisboa.tecnico.hdsledger.communication.CommitMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
+import pt.ulisboa.tecnico.hdsledger.communication.BlockMessage;
 
 import java.util.Timer;
 public class InstanceInfo {
@@ -13,9 +14,9 @@ public class InstanceInfo {
     private int roundChangeRound = -1;
     private String preparedValue = null;
     private CommitMessage commitMessage;
-    private ConsensusMessage inputValue;
+    private BlockMessage inputValue;
     private Timer timer = null;
-    public InstanceInfo(ConsensusMessage inputValue) {
+    public InstanceInfo(BlockMessage inputValue) {
         this.inputValue = inputValue;
     }
     public void cancelTimer() {
@@ -61,11 +62,11 @@ public class InstanceInfo {
         this.preparedValue = preparedValue;
     }
 
-    public ConsensusMessage getInputValue() {
+    public BlockMessage getInputValue() {
         return inputValue;
     }
 
-    public void setInputValue(ConsensusMessage inputValue) {
+    public void setInputValue(BlockMessage inputValue) {
         this.inputValue = inputValue;
     }
 
