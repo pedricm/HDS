@@ -7,6 +7,7 @@ import pt.ulisboa.tecnico.hdsledger.utilities.ProcessConfig;
 import pt.ulisboa.tecnico.hdsledger.communication.Message;
 import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.ClientMessage;
+import pt.ulisboa.tecnico.hdsledger.communication.ClientResponseMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.builder.ConsensusMessageBuilder;
 
 import java.io.IOException;
@@ -26,6 +27,7 @@ public class ClientLibrary {
     // num msg -> sender ID -> message
     private final Map<Integer, Map<String, ConsensusMessage>> bucket = new ConcurrentHashMap<>();
     private int quorumSize;
+    private int f;
     private int msgCounter = 0;
 
     private static String keysPath;
@@ -35,7 +37,7 @@ public class ClientLibrary {
         this.nodeConfig = config;
         this.nodeConfigs = nodesConfig;
         int nodeCount = this.nodeConfigs.length;
-        int f = Math.floorDiv(nodeCount - 1, 3);
+        this.f = Math.floorDiv(nodeCount - 1, 3);
         quorumSize = Math.floorDiv(nodeCount + f, 2) + 1;
         this.keysPath = keysPath;
 
@@ -51,7 +53,7 @@ public class ClientLibrary {
         PublicKey dest_pub_key = readPublicKey(keysPath + "key_" + dest_account + "_pub.key");
 
         ClientMessage cl = new ClientMessage(src_pub_key, dest_pub_key, amount);
-        send(cl);
+        send(cl, 0);
     }
 
     public void check_balance(String account){
@@ -61,10 +63,10 @@ public class ClientLibrary {
 
         // Build transfer Message
         ClientMessage cl = new ClientMessage(src_pub_key);
-        send(cl);
+        send(cl, 1);
     }
 
-    public void send(ClientMessage msg) {
+    public void send(ClientMessage msg, int type) {
 
         ConsensusMessage consensusMessage = new ConsensusMessageBuilder(nodeConfig.getId(), Message.Type.APPEND)
                 .setMessage(msg.toJson())
@@ -78,11 +80,45 @@ public class ClientLibrary {
             if (bucket.containsKey(msgCounter - 1))
                 responses = bucket.get(msgCounter - 1).size();
         }
+        //TODO: Get the answwer from the quorum
+        getAnswer(msgCounter - 1, type);
+    }
+
+    public void getAnswer(int messageId, int type) {
+        ConsensusMessage answer = getCorrectAnswer(messageId);
+        ClientResponseMessage response = answer.deserializeClientResponseMessage();
+        if (type == 0) {
+            if (response.isAck()) {
+                System.out.println("Transfer successful");
+            } else {
+                System.out.println("Transfer failed");
+            }
+        } else {
+            System.out.println("Balance: " + response.getAmount());
+        }
+
+    }
+    public ConsensusMessage getCorrectAnswer(int messageId) {
+
+        Map<String, ConsensusMessage> answers = bucket.get(messageId);
+        Map<ConsensusMessage, Integer> countMap = new HashMap<>();
+
+        for (ConsensusMessage message : answers.values()) {
+            countMap.put(message, countMap.getOrDefault(message, 0) + 1);
+        }
+
+        for (Map.Entry<ConsensusMessage, Integer> entry : countMap.entrySet()) {
+            if (entry.getValue() >= this.f + 1) {
+                return entry.getKey();
+            }
+        }
+
+        return null;
     }
     public void addMessageToBucket(ConsensusMessage message) {
         int messageId = message.getReplyToMessageId() / nodeConfigs.length;
         String senderId = message.getSenderId();
-        System.out.println("Adding message to bucket with id: " + messageId+ " and sender: " + senderId);
+        //System.out.println("Adding message to bucket with id: " + messageId+ " and sender: " + senderId);
         bucket.putIfAbsent(messageId, new ConcurrentHashMap<>());
         bucket.get(messageId).put(senderId, message);
 
@@ -98,7 +134,7 @@ public class ClientLibrary {
                         // Separate thread to handle each message
                         new Thread(() -> {
                             if (message.getType().equals(Message.Type.ACK_CLIENT)) {
-                                System.out.println("Received response with id: " + ((ConsensusMessage) message).getReplyToMessageId());
+                                //System.out.println("Received response with id: " + ((ConsensusMessage) message).getReplyToMessageId());
                                 addMessageToBucket((ConsensusMessage) message);
                             }
 
