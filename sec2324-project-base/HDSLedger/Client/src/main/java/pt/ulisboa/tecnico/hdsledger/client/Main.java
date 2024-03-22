@@ -55,10 +55,10 @@ public class Main {
                         printUsage();
                         break;
                     case "transfer":
-                        //client.transfer();
+                        client.transfer();
                         break;
                     case "check_balance":
-                        //client.check_balance();
+                        client.check_balance();
                         break;
                     default:
                         System.out.println("Invalid command");
