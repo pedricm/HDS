@@ -79,7 +79,7 @@ public class NodeService implements UDPService {
     private ArrayList<ConsensusMessage> waitBuffer = new ArrayList<ConsensusMessage>();
 
     private final int GASPRICE = 1;
-    private final int BLOCKSIZE = 2;
+    private final int BLOCKSIZE = 1;
 
     public NodeService(Link link, ProcessConfig config, ProcessConfig[] nodesConfig, String keysPath) {
 
@@ -270,11 +270,11 @@ public class NodeService implements UDPService {
         // CHECK PUBSOURCE
         Account source = this.accounts.get(value.getPubSource());
         if(source == null) return false;
-        if(!source.getId().equals(message.getSenderId())) return false;
 
         if (value.getPubDest() != null){
             if (value.getAmount() <= 0) return false;
             // CHECK PUBDST
+            if(!source.getId().equals(message.getSenderId())) return false;
             if(this.accounts.get(value.getPubDest()) == null) return false;
         }
         if (value.getPubDest() == null && value.getAmount() != -1) return false;
