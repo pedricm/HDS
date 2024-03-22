@@ -85,29 +85,40 @@ public class ClientLibrary {
     }
 
     public void getAnswer(int messageId, int type) {
-        ConsensusMessage answer = getCorrectAnswer(messageId);
-        ClientResponseMessage response = answer.deserializeClientResponseMessage();
+        Integer response = getCorrectAnswer(messageId, type);
         if (type == 0) {
-            if (response.isAck()) {
+            if (response == 1) {
                 System.out.println("Transfer successful");
             } else {
                 System.out.println("Transfer failed");
             }
         } else {
-            System.out.println("Balance: " + response.getAmount());
+            System.out.println("Balance: " + response);
         }
 
     }
-    public ConsensusMessage getCorrectAnswer(int messageId) {
+    public Integer getCorrectAnswer(int messageId, int type) {
 
         Map<String, ConsensusMessage> answers = bucket.get(messageId);
-        Map<ConsensusMessage, Integer> countMap = new HashMap<>();
+        Map<Integer, Integer> countMap = new HashMap<>();
 
         for (ConsensusMessage message : answers.values()) {
-            countMap.put(message, countMap.getOrDefault(message, 0) + 1);
+            if (type == 0) {
+                if (message.deserializeClientResponseMessage().isAck()) {
+                    countMap.put(1,
+                            countMap.getOrDefault(1, 0) + 1);
+                } else {
+                    countMap.put(0,
+                            countMap.getOrDefault(0, 0) + 1);
+                }
+            } else {
+                countMap.put(message.deserializeClientResponseMessage().getAmount(),
+                        countMap.getOrDefault(message.deserializeClientResponseMessage().getAmount(), 0) + 1);
+            }
         }
 
-        for (Map.Entry<ConsensusMessage, Integer> entry : countMap.entrySet()) {
+        for (Map.Entry<Integer, Integer> entry : countMap.entrySet()) {
+            System.out.println("key: " + entry.getKey() + " value: " + entry.getValue());
             if (entry.getValue() >= this.f + 1) {
                 return entry.getKey();
             }
