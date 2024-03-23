@@ -131,22 +131,12 @@ public class NodeService implements UDPService {
     }
     public ConsensusMessage createConsensusMessage(BlockMessage value, int instance, int round, ArrayList<ConsensusMessage> roundChange) {
         PrePrepareMessage prePrepareMessage = new PrePrepareMessage(value);
-        ConsensusMessage consensusMessage;
-            /*if (config.getTest(2)) {
-                ConsensusMessage ms = clientMessage;
-                ms.setMessage("bizantine message");
-                consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.PRE_PREPARE)
-                        .setConsensusInstance(instance)
-                        .setRound(round)
-                        .setMessage(prePrepareMessage.toJson())
-                        .setClient(ms)
-                        .build();*/
-        consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.PRE_PREPARE)
-                .setConsensusInstance(instance)
-                .setRound(round)
-                .setMessage(prePrepareMessage.toJson())
-                .setValidQ(roundChange)
-                .build();
+        ConsensusMessage consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.PRE_PREPARE)
+                    .setConsensusInstance(instance)
+                    .setRound(round)
+                    .setMessage(prePrepareMessage.toJson())
+                    .setValidQ(roundChange)
+                    .build();
 
 
         return consensusMessage;
@@ -364,7 +354,15 @@ public class NodeService implements UDPService {
                     if(!waitBuffer.isEmpty()) {
                         ConsensusMessage message = waitBuffer.remove(0);
                         // maybe fechar account
-                        if(clientMessageCheck2(message, GASPRICE)){
+                        if(config.getTest(2)) {
+                            ConsensusMessage biz = message;
+                            ClientMessage bizc = biz.deserializeClientMessage();
+                            bizc.setAmount(100000);
+                            biz.setMessage(bizc.toJson());
+                            transactions.add(new TransactionMessage(biz, GASPRICE));
+                            size++;
+                        }
+                        else if(clientMessageCheck2(message, GASPRICE)){
                             transactions.add(new TransactionMessage(message, GASPRICE));
                             size++;
                         } else {
@@ -453,10 +451,14 @@ public class NodeService implements UDPService {
                             config.getId(), senderId, consensusInstanceMessage, round));
             return;
         }
+        boolean flag[] = {false};
         ArrayList<TransactionMessage> transactions = bm.deserializeTransactions();
         if(transactions.size() != BLOCKSIZE) return;
         transactions.stream().forEach(transaction -> {
-            if(transaction.getGas() < 0) return;
+            if(transaction.getGas() < 0){
+                flag[0] = true;
+                return;
+            }
 
             ConsensusMessage clientMessage = transaction.deserializeConsensusMessage();
             if (clientMessage == null || !clientMessage.checkDS(this.keysPath)) {
@@ -464,15 +466,21 @@ public class NodeService implements UDPService {
                         MessageFormat.format(
                                 "{0} - Received PRE-PREPARE message from {1} Consensus Instance {2}, Round {3} with faulty DS of client message",
                                 config.getId(), senderId, consensusInstanceMessage, round));
+                flag[0] = true;
                 return;
             }
 
             // MESSAGE CHECKS
-            if(!clientMessageCheck(clientMessage))return;
-            if(!clientMessageCheck2(clientMessage, transaction.getGas()))return;
+            if(!clientMessageCheck(clientMessage)){
+                flag[0] = true;
+                return;
+            }
+            if(!clientMessageCheck2(clientMessage, transaction.getGas())){
+                flag[0] = true;
+                return;
+            }
         });
-
-
+        if (flag[0]) return;
         if (message.getValidQ() == null) {
             if(message.getRound() != 1) return;
             // Verify if sender is the block owner
@@ -488,33 +496,44 @@ public class NodeService implements UDPService {
             if (validQ.size() != size) return;
             // Justify preprepare j2
             validQ.stream().forEach( cm -> {
-                if (cm.getRound() < 1 || cm.getConsensusInstance() < 1) return;
+                if (cm.getRound() < 1 || cm.getConsensusInstance() < 1){
+                    flag[0]=true;
+                    return;
+                }
                 if (!cm.checkDS(this.keysPath)) {
                     LOGGER.log(Level.INFO,
                             MessageFormat.format("{0} - Received PRE-PREPARE JUSTIFICATION - ROUND-CHANGE message from {1}: Consensus Instance {2}, Round {3} with faulty DS",
                                     config.getId(), message.getSenderId(), consensusInstance, round));
+                    flag[0]=true;
                     return;
                 }
                 RoundChangeMessage rcm = cm.deserializeRoundChangeMessage();
                 if (rcm.getPreparedRound() > 0) {
-                    if(cm.getValidQ() == null || rcm.getPreparedValue() == null) return;
+                    if(cm.getValidQ() == null || rcm.getPreparedValue() == null) {
+                        flag[0]=true;
+                        return;
+                    }
                     cm.deserializeValidQ().stream().forEach( qm -> {
                         if (qm.getRound() != rcm.getPreparedRound() || !qm.deserializePrepareMessage().getValue().equals(rcm.getPreparedValue()) || !qm.checkDS(this.keysPath)) {
                             LOGGER.log(Level.INFO,
                                     MessageFormat.format("{0} - Received PRE-PREPARE JUSTIFICATION - PREPARE message from {1}: Consensus Instance {2}, Round {3} with faulty DS",
                                             config.getId(), message.getSenderId(), consensusInstance, round));
+                            flag[0]=true;
                             return;
                         }
                     });
+                    if(flag[0]) return;
                     if(rcm.getPreparedRound() > cmround[0]) {
                         cmround[0] = rcm.getPreparedRound();
                         cmVal[0] = rcm.getPreparedValue();
                     }
                     // Verify if sender is the block owner and other things
                 } else if (rcm.getPreparedRound() != -1 || rcm.getPreparedValue() != null || cm.getValidQ() != null || !bm.getLeaderId().equals(senderId)) {
+                    flag[0]=true;
                     return;
                 }
             });
+            if(flag[0]) return;
             if (cmround[0] != -1 && !message.deserializePrePrepareMessage().getValue().equals(cmVal[0])) {
                 return;
             }
@@ -707,6 +726,7 @@ public class NodeService implements UDPService {
         if(validQs != null) {
             List<ConsensusMessage> validQ = message.deserializeValidQ();
             String[] msValue = {null};
+            boolean flag[] = {false};
             validQ.stream().forEach(ms -> {
                 if (msValue[0] == null) msValue[0] = ms.deserializeCommitMessage().getValue();
 
@@ -714,10 +734,11 @@ public class NodeService implements UDPService {
                     LOGGER.log(Level.INFO,
                             MessageFormat.format("{0} - Received ?COMMIT QUORUM SUB? message from {1}: Consensus Instance {2}, Round {3} with faulty DS",
                                     config.getId(), ms.getSenderId(), ms.getConsensusInstance(), ms.getRound()));
+                    flag[0]=true;
                     return;
                 }
             });
-
+            if(flag[0]) return;
             LOGGER.log(Level.INFO,
                     MessageFormat.format("{0} - Received COMMIT QUORUM message from {1}: Consensus Instance {2}, Round {3}",
                             config.getId(), message.getSenderId(), consensusInstance, round));
@@ -839,14 +860,17 @@ public class NodeService implements UDPService {
         if(rcm == null) return;
         if (rcm.getPreparedRound() > 0) {
             if(message.getValidQ() == null || rcm.getPreparedValue() == null) return;
+            boolean flag[] = {false};
             message.deserializeValidQ().stream().forEach( qm -> {
                 if (qm.getRound() != rcm.getPreparedRound() || !qm.deserializePrepareMessage().getValue().equals(rcm.getPreparedValue()) || !qm.checkDS(this.keysPath)) {
                     LOGGER.log(Level.INFO,
                             MessageFormat.format("{0} - Received ROUND_CHANGE JUSTIFICATION - PREPARE message from {1}: Consensus Instance {2}, Round {3} with faulty DS",
                                     config.getId(), message.getSenderId(), consensusInstance, round));
+                    flag[0]=true;
                     return;
                 }
             });
+            if(flag[0]) return;
         } else if (rcm.getPreparedRound() != -1 || rcm.getPreparedValue() != null || message.getValidQ() != null) return;
 
         roundchangeMessages.addMessage(message);

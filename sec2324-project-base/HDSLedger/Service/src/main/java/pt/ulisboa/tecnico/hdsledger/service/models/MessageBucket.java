@@ -62,7 +62,9 @@ public class MessageBucket {
             valueToMessages.computeIfAbsent(value, k -> new ArrayList<>()).add(message);
 
         });
-
+        /*frequency.entrySet().stream().forEach((Map.Entry<String, Integer> entry) -> {
+            System.out.println("EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE"+ entry.getValue());
+        });*/
         // Only one value (if any, thus the optional) will have a frequency
         // greater than or equal to the quorum size
         Optional<String> validValue = frequency.entrySet().stream().filter((Map.Entry<String, Integer> entry) -> {
