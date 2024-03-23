@@ -209,11 +209,6 @@ public class NodeService implements UDPService {
             else {
                 int gasPrice = transaction.getGas();
                 PublicKey pubKeyBLeader = CryptoLibrary.readPublicKey(keysPath + "key_"+ blockLeader +"_pub.key");
-                if (cl.getPubDest() == null || amount == -1 || !accounts.get(cl.getPubSource()).checkTransaction(amount+gasPrice)){
-                    createAndSendClientResponseMessageTransfer(client, false);
-                    System.out.println("FAILED TRANSFER: "+ client.getSenderId() +" : "+ client.getMessageId() +" : " + accounts.get(cl.getPubSource()).getAmount() + " " + accounts.get(cl.getPubDest()).getAmount() + " || " + blockLeader + " " + accounts.get(pubKeyBLeader).getAmount() + "-----------------------------------");
-                    return;
-                }
                 System.out.println("BEFORE TRANSFER: "+ client.getSenderId() +" : "+ client.getMessageId() +" : " + accounts.get(cl.getPubSource()).getAmount() + " " + accounts.get(cl.getPubDest()).getAmount() + "-----------------------------------");
                 System.out.println("BEFORE TRANSFER GAS: "+ client.getSenderId() +" : "+ client.getMessageId() +" : " + accounts.get(cl.getPubSource()).getAmount() +" || " + blockLeader + " " + accounts.get(pubKeyBLeader).getAmount() + "-----------------------------------");
                 accounts.get(cl.getPubSource()).transfer(amount);
@@ -290,7 +285,21 @@ public class NodeService implements UDPService {
         if (value.getPubDest() == null && value.getAmount() != -1) return false;
         return true;
     }
-
+    public boolean clientMessageCheck2(ConsensusMessage message, int gasPrice) {
+        ClientMessage cl = message.deserializeClientMessage();
+        int amount = cl.getAmount();
+        // MESSAGE CHECKS
+        if(cl.getPubDest() != null || amount != -1){
+            if (cl.getPubDest() == null || amount == -1 || !accounts.get(cl.getPubSource()).checkTransaction(amount+gasPrice)){
+                if(cl.getPubDest() != null)
+                    System.out.println("FAILED TRANSFER: "+ message.getSenderId() +" : "+ message.getMessageId() +" : " + accounts.get(cl.getPubSource()).getAmount() + " " + accounts.get(cl.getPubDest()).getAmount() + "-----------------------------------");
+                else
+                    System.out.println("FAILED TRANSFER: "+ message.getSenderId() +" : "+ message.getMessageId() +" : " + accounts.get(cl.getPubSource()).getAmount() + " " + "null" + "-----------------------------------");
+                return false;
+            }
+        }
+        return true;
+    }
 
     /*
      * Start an instance of consensus for a value
@@ -352,7 +361,7 @@ public class NodeService implements UDPService {
                     if(!waitBuffer.isEmpty()) {
                         ConsensusMessage message = waitBuffer.remove(0);
                         // maybe fechar account
-                        if(true){//clientMessageCheck2(message, GASPRICE)){
+                        if(clientMessageCheck2(message, GASPRICE)){
                             transactions.add(new TransactionMessage(message, GASPRICE));
                             size++;
                         } else {
@@ -457,6 +466,7 @@ public class NodeService implements UDPService {
 
             // MESSAGE CHECKS
             if(!clientMessageCheck(clientMessage))return;
+            if(!clientMessageCheck2(clientMessage, transaction.getGas()))return;
         });
 
 
