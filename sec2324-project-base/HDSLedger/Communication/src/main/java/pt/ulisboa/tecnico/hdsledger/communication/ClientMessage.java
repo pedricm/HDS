@@ -38,4 +38,20 @@ public class ClientMessage {
     public String toJson() {
         return new Gson().toJson(this);
     }
+    public String toString(String senderId, int ident) {
+        String tabs = "";
+        for(int i =0; i<ident ;i++) tabs+="\t";
+
+        String stringClass = getClass().getSimpleName() + "{\n"+tabs+"\t";
+        if(pubDest == null) {
+            stringClass += "CHECK_BALANCE IN ACCOUNT: " + this.pubSource + "\n"+tabs+"\tFROM SenderId: " + senderId;
+        }
+        else {
+            stringClass += "TRANSACTION FROM ACCOUNT: " + this.pubSource + " (SenderId = " + senderId +")\n"+tabs+"\tTO ACCOUNT: " + this.pubDest +
+                    "\n"+tabs+"\t AMOUNT: " + amount;
+        }
+
+        stringClass += "\n"+tabs+"}\n";
+        return stringClass;
+    }
 }

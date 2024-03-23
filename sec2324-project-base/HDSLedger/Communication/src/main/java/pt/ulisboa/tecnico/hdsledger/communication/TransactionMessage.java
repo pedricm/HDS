@@ -40,4 +40,13 @@ public class TransactionMessage implements Serializable {
     public String toJson() {
         return new Gson().toJson(this);
     }
+    public String toString(int ident) {
+        String tabs = "";
+        for(int i =0; i<ident ;i++) tabs+="\t";
+
+        String stringClass = getClass().getSimpleName() + "{\n"+tabs+"\tGasPrice= " + this.gas +"\n"+tabs+"\t";
+
+        stringClass += this.deserializeConsensusMessage().toString(ident+1) +tabs+"}\n";
+        return stringClass;
+    }
 }

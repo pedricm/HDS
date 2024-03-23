@@ -151,4 +151,12 @@ public class ConsensusMessage extends Message {
         if(!super.equals(other)) return false;
         return true;
     }*/
+    public String toString(int ident) {
+        String tabs = "";
+        for(int i =0; i<ident ;i++) tabs+="\t";
+        String stringClass = getClass().getSimpleName() + "{\n"+tabs+"\t" + this.deserializeClientMessage().toString(this.getSenderId(), ident+1);
+
+        stringClass += tabs+"}\n";
+        return stringClass;
+    }
 }

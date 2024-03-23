@@ -119,7 +119,16 @@ public class NodeService implements UDPService {
     private boolean isLeader(int instance, int round, String id) {
         return getLeader(instance, round).equals(id);
     }
- 
+    private void printLedger() {
+        String stringLedger[] = {"LEDGER{\n"};
+
+        this.ledger.stream().forEach(block -> {
+            stringLedger[0] += "\t"+ block.toString(1) +",\n";
+        });
+        stringLedger[0] +="}\n";
+
+        System.out.println(stringLedger[0]);
+    }
     public ConsensusMessage createConsensusMessage(BlockMessage value, int instance, int round, ArrayList<ConsensusMessage> roundChange) {
         PrePrepareMessage prePrepareMessage = new PrePrepareMessage(value);
         ConsensusMessage consensusMessage;
@@ -216,6 +225,7 @@ public class NodeService implements UDPService {
                 createAndSendClientResponseMessageTransfer(client, true);
             }
         });
+        printLedger();
     }
     public int  applyTransactionsFromBuffer(int consensusInstance, int times) {
         boolean flag = true;
@@ -315,48 +325,75 @@ public class NodeService implements UDPService {
 
         synchronized (waitBuffer) {
             waitBuffer.add(message);
-            if(waitBuffer.size() >= BLOCKSIZE){
-                ArrayList<ConsensusMessage> requests = new ArrayList<>();
-                for (int i = 0 ; i<BLOCKSIZE; i++) {
-                    requests.add(waitBuffer.remove(0));
-                }
-                startConsensus(requests);
-            }
+            waitBuffer.notifyAll();
+            System.out.println("all notified");
         }
     }
-    public void startConsensus(ArrayList<ConsensusMessage> requests) {
-        // CREATES THE BLOCKS
-        ArrayList<TransactionMessage> transactions = new ArrayList<>();
-        BlockMessage blockMessage;
-        requests.stream().forEach( message -> {
-            transactions.add(new TransactionMessage(message,GASPRICE));
-        });
-        blockMessage = new BlockMessage(transactions, this.config.getId());
-        blockMessage.setDS(keysPath);
-
-        int localConsensusInstance = this.consensusInstance.incrementAndGet();
-        InstanceInfo existingConsensus = this.instanceInfo.put(localConsensusInstance, new InstanceInfo(blockMessage));
-
-        // If startConsensus was already called for a given round
-        if (existingConsensus != null) {
-            LOGGER.log(Level.INFO, MessageFormat.format("{0} - Node already started consensus for instance {1}",
-                    config.getId(), localConsensusInstance));
-            return;
-        }
-
-        InstanceInfo instance = this.instanceInfo.get(localConsensusInstance);
-        instance.setTimer(createTimerTask(localConsensusInstance, null));
-        // Leader broadcasts PRE-PREPARE message
-        if (this.isLeader(localConsensusInstance, instance.getCurrentRound(), this.config.getId())) {
-            LOGGER.log(Level.INFO,
-                MessageFormat.format("{0} - Node is leader, sending PRE-PREPARE message", config.getId()));
-            if (config.getTest(3)) {
-                return;
+    public void startConsensus() {
+        while (true) {
+            int localConsensusInstance = this.consensusInstance.incrementAndGet();
+            // Only start a consensus instance if the last one was decided
+            // We need to be sure that the previous value has been decided
+            //if(config.getTest(Y)) {
+            while (lastDecidedConsensusInstance.get() < localConsensusInstance - 1) {
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
-            this.link.broadcast(this.createConsensusMessage(blockMessage, localConsensusInstance, instance.getCurrentRound(), null));
-        } else {
-            LOGGER.log(Level.INFO,
-                    MessageFormat.format("{0} - Node is not leader, waiting for PRE-PREPARE message", config.getId()));
+            //}
+            // CREATES THE BLOCKS
+            int size = 0;
+            BlockMessage blockMessage;
+            ArrayList<TransactionMessage> transactions = new ArrayList<>();
+            synchronized (waitBuffer) {
+                while (size < BLOCKSIZE) {
+                    if(!waitBuffer.isEmpty()) {
+                        ConsensusMessage message = waitBuffer.remove(0);
+                        // maybe fechar account
+                        if(true){//clientMessageCheck2(message, GASPRICE)){
+                            transactions.add(new TransactionMessage(message, GASPRICE));
+                            size++;
+                        } else {
+                            createAndSendClientResponseMessageTransfer(message, false);
+                        }
+                    } else {
+                        try {
+                            waitBuffer.wait();
+                        }
+                        catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            }
+            blockMessage = new BlockMessage(transactions, this.config.getId());
+            blockMessage.setDS(keysPath);
+
+            InstanceInfo existingConsensus = this.instanceInfo.put(localConsensusInstance, new InstanceInfo(blockMessage));
+
+            // If startConsensus was already called for a given round
+            if (existingConsensus != null) {
+                LOGGER.log(Level.INFO, MessageFormat.format("{0} - Node already started consensus for instance {1}",
+                        config.getId(), localConsensusInstance));
+                continue;
+            }
+
+            InstanceInfo instance = this.instanceInfo.get(localConsensusInstance);
+            instance.setTimer(createTimerTask(localConsensusInstance, null));
+            // Leader broadcasts PRE-PREPARE message
+            if (this.isLeader(localConsensusInstance, instance.getCurrentRound(), this.config.getId())) {
+                LOGGER.log(Level.INFO,
+                        MessageFormat.format("{0} - Node is leader, sending PRE-PREPARE message", config.getId()));
+                if (config.getTest(3)) {
+                    continue;
+                }
+                this.link.broadcast(this.createConsensusMessage(blockMessage, localConsensusInstance, instance.getCurrentRound(), null));
+            } else {
+                LOGGER.log(Level.INFO,
+                        MessageFormat.format("{0} - Node is not leader, waiting for PRE-PREPARE message", config.getId()));
+            }
         }
     }
 

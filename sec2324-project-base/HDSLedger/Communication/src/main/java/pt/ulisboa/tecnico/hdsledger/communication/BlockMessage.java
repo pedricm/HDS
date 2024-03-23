@@ -62,4 +62,17 @@ public class BlockMessage implements Serializable {
     public String toJson() {
         return new Gson().toJson(this);
     }
+    public String toString(int ident) {
+        final String stringClass[] = {null};
+        String tabs = "";
+        for(int i =0; i<ident ;i++) tabs+="\t";
+
+        stringClass[0] = getClass().getSimpleName() + "{\n"+tabs+"\t"+"BlockLeader= " + this.leaderId +"\n"+tabs+"\t"+"Transactions{\n"+tabs+"\t\t";
+
+        this.deserializeTransactions().stream().forEach(transaction -> {
+            stringClass[0] += transaction.toString(ident+2);
+        });
+        stringClass[0] += tabs+"\t}\n"+tabs +"}";
+        return stringClass[0];
+    }
 }
