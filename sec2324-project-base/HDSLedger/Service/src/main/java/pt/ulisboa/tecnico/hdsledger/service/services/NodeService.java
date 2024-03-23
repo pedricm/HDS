@@ -254,6 +254,9 @@ public class NodeService implements UDPService {
                     instance.cancelTimer();
                     return;
                 }
+                // WE WANT TO ROUND CHANGE ONLY IF WE ARE ALREADY DOING THAT INSTANCE
+                // IF NOT, WE WILL BE ONLY DOING MESSAGES FOR THE SAKE OF IT
+                if (lastDecidedConsensusInstance.get()+1 != this.consensusInstanceTimer) return;
                 instance.setCurrentRound(instance.getCurrentRound()+1);
                 link.broadcast(createConsensusMessageRoundChange(instance.getPreparedRound(), instance.getPreparedValue(), this.consensusInstanceTimer, instance.getCurrentRound()));
             }
@@ -275,11 +278,11 @@ public class NodeService implements UDPService {
         // CHECK PUBSOURCE
         Account source = this.accounts.get(value.getPubSource());
         if(source == null) return false;
-        if(!source.getId().equals(message.getSenderId())) return false;
 
         if (value.getPubDest() != null){
             if (value.getAmount() <= 0) return false;
             // CHECK PUBDST
+            if(!source.getId().equals(message.getSenderId())) return false;
             if(this.accounts.get(value.getPubDest()) == null) return false;
         }
         if (value.getPubDest() == null && value.getAmount() != -1) return false;
@@ -422,7 +425,7 @@ public class NodeService implements UDPService {
          *  Check msg DS
          *
          * */
-        if (round < 1 || consensusInstanceMessage < 1 || message.deserializePrePrepareMessage().getValue() == null) return;
+        if (round < 1 || consensusInstanceMessage < 1 || message.deserializePrePrepareMessage().getValue() == null || consensusInstanceMessage != (this.lastDecidedConsensusInstance.get()+1)) return;
         if (!message.checkDS(this.keysPath)) {
             LOGGER.log(Level.INFO,
                     MessageFormat.format(
