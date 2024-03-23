@@ -64,15 +64,15 @@ public class BlockMessage implements Serializable {
     }
     public String toString(int ident) {
         final String stringClass[] = {null};
-        String tabs = "";
-        for(int i =0; i<ident ;i++) tabs+="\t";
+        String tabs[] = {""};
+        for(int i =0; i<ident ;i++) tabs[0]+="\t";
 
-        stringClass[0] = getClass().getSimpleName() + "{\n"+tabs+"\t"+"BlockLeader= " + this.leaderId +"\n"+tabs+"\t"+"Transactions{\n"+tabs+"\t\t";
+        stringClass[0] = getClass().getSimpleName() + "{\n"+tabs[0]+"\t"+"BlockLeader= " + this.leaderId +"\n"+tabs[0]+"\t"+"Transactions{\n";
 
         this.deserializeTransactions().stream().forEach(transaction -> {
-            stringClass[0] += transaction.toString(ident+2);
+            stringClass[0] += tabs[0]+"\t\t"+transaction.toString(ident+2);
         });
-        stringClass[0] += tabs+"\t}\n"+tabs +"}";
+        stringClass[0] += tabs[0]+"\t}\n"+tabs[0] +"}";
         return stringClass[0];
     }
 }
