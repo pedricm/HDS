@@ -920,6 +920,9 @@ public class NodeService implements UDPService {
     @Override
     public void listen() {
         try {
+            new Thread(() -> {
+                startConsensus();
+            }).start();
             // Thread to listen on every request
             new Thread(() -> {
                 try {
