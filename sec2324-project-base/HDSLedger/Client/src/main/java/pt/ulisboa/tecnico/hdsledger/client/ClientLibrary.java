@@ -80,7 +80,7 @@ public class ClientLibrary {
             if (bucket.containsKey(msgCounter - 1))
                 responses = bucket.get(msgCounter - 1).size();
         }
-        //TODO: Get the answwer from the quorum
+        //Get the answwer from the quorum
         getAnswer(msgCounter - 1, type);
     }
 
