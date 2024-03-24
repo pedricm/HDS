@@ -80,6 +80,10 @@ public class ConsensusMessage extends Message {
         if(this.message==null) return null;
         return new Gson().fromJson(this.message, ClientMessage.class);
     }
+    public ClientResponseMessage deserializeClientResponseMessage() {
+        if(this.message==null) return null;
+        return new Gson().fromJson(this.message, ClientResponseMessage.class);
+    }
 
     public String getMessage() {
         return message;

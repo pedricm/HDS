@@ -15,52 +15,66 @@ public class Main {
     private static final CustomLogger LOGGER = new CustomLogger(Main.class.getName());
     private static String nodesConfigPath = "../Service/src/main/resources/";
 
+    private static String keysPath = "../Service/src/main/resources/keys/";
+
     public static void main(String[] args) {
-            try {
-                // Command line arguments
-                String id = args[0];
-                nodesConfigPath += args[1];
+        try {
+            // Command line arguments
+            String id = args[0];
+            nodesConfigPath += args[1];
 
-                // Create configuration instances
-                ProcessConfig[] configs = new ProcessConfigBuilder().fromFile(nodesConfigPath);
-                ProcessConfig[] nodeConfigs = Arrays.stream(configs)
-                        .filter(config -> !config.isClient())
-                        .toArray(ProcessConfig[]::new);
-                ProcessConfig[] clientConfigs = Arrays.stream(configs)
-                        .filter(ProcessConfig::isClient)
-                        .toArray(ProcessConfig[]::new);
-                ProcessConfig ClientConfig = Arrays.stream(clientConfigs).filter(c -> c.getId().equals(id)).findAny().get();
+            // Create configuration instances
+            ProcessConfig[] configs = new ProcessConfigBuilder().fromFile(nodesConfigPath);
+            ProcessConfig[] nodeConfigs = Arrays.stream(configs)
+                    .filter(config -> !config.isClient())
+                    .toArray(ProcessConfig[]::new);
+            ProcessConfig[] clientConfigs = Arrays.stream(configs)
+                    .filter(ProcessConfig::isClient)
+                    .toArray(ProcessConfig[]::new);
+            ProcessConfig ClientConfig = Arrays.stream(clientConfigs).filter(c -> c.getId().equals(id)).findAny().get();
 
-                LOGGER.log(Level.INFO, MessageFormat.format("{0} - Running at {1}:{2}; tests: {3}",
-                        ClientConfig.getId(), ClientConfig.getHostname(), ClientConfig.getPort(), Arrays.toString(ClientConfig.getTests())));
+            LOGGER.log(Level.INFO, MessageFormat.format("{0} - Running at {1}:{2}; tests: {3}",
+                    ClientConfig.getId(), ClientConfig.getHostname(), ClientConfig.getPort(), Arrays.toString(ClientConfig.getTests())));
 
-                // Abstraction to send and receive messages
-                Link linkToNodes = new Link(ClientConfig, ClientConfig.getPort(), nodeConfigs, clientConfigs,
-                        ConsensusMessage.class);
+            // Abstraction to send and receive messages
+            Link linkToNodes = new Link(ClientConfig, ClientConfig.getPort(), nodeConfigs, clientConfigs,
+                    ConsensusMessage.class);
 
-                Client client = new Client(linkToNodes, ClientConfig, nodeConfigs);
-                Scanner parser = new Scanner(System.in);
+            Client client = new Client(linkToNodes, ClientConfig, nodeConfigs, keysPath);
+            Scanner parser = new Scanner(System.in);
 
-                printUsage();
+            printUsage();
 
-                while (true) {
-                    System.out.print("> ");
-                    String command = parser.nextLine();  // Read user input
+            while (true) {
+                System.out.println("Type \"help\", for more information");
+                System.out.print("> ");
+                String command = parser.nextLine();  // Read user input
 
-                    if (command.equals("/q")) {
-                        System.out.println("Quiting!");
-                        return;
-                    }
-                    client.send(command);
+                switch(command) {
+                    case "help":
+                        printUsage();
+                        break;
+                    case "transfer":
+                        client.transfer();
+                        break;
+                    case "check_balance":
+                        client.check_balance();
+                        break;
+                    default:
+                        System.out.println("Invalid command");
+                        break;
                 }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
 
-        private static void printUsage(){
-            System.out.println("\n-----------------------------------------------");
-            System.out.println("Insert strings!");
-            System.out.println("/q to quit!\n\n");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
+    }
+
+    private static void printUsage(){
+        System.out.println("\n-----------------------------------------------");
+        System.out.print("\tAvailable commands:\n" +
+                "transfer: transfer money between 2 accounts\n" +
+                "check_balance: obtain the balance a given account\n\n");
+    }
 }
