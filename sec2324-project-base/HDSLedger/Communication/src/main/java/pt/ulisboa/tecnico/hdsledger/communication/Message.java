@@ -43,4 +43,20 @@ public class Message implements Serializable {
     public void setType(Type type) {
         this.type = type;
     }
+    /*@Override
+    public boolean equals(Object obj) {
+        if(!(obj instanceof Message))return false;
+        Message other = (Message) obj;
+
+        if(this.senderId == null){
+            if (other.getSenderId() != null) return false;
+        }
+        else if(!this.senderId.equals(other.getSenderId())) return false;
+
+        if(this.messageId != other.getMessageId()) return false;
+
+        if(this.type != other.getType()) return false;
+
+        return true;
+    }*/
 }

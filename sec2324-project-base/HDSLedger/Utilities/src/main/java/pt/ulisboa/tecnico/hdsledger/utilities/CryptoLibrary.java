@@ -61,7 +61,23 @@ public class CryptoLibrary {
         fis.close();
         return content;
     }
-
+    public static String pubKeyToString(PublicKey pubKey){
+        if(pubKey == null) return null;
+        byte[] pubKeyBytes = pubKey.getEncoded();
+        return Base64.getEncoder().encodeToString(pubKeyBytes);
+    }
+    public static PublicKey stringToPubKey(String key){
+        byte[] keyBytes = Base64.getDecoder().decode(key);
+        try {
+            KeyFactory keyfac = KeyFactory.getInstance("RSA");
+            X509EncodedKeySpec spec = new X509EncodedKeySpec(keyBytes);
+            return keyfac.generatePublic(spec);
+        }
+        catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
     ///////////////////////////////////////////////////////////////////////// Create-DS-Subfunc ///////////////////////////////////////////////////////////////////////////////////
     // DIGITAL SIGNATURE
     public static String digitalSignature(String obj, PrivateKey privateKey) {

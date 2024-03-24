@@ -32,5 +32,19 @@
         "isClient": true,
         "tests": [0,0,0,0,0,1,0],
         "port": 3005
+    },
+    {
+        "id": "6",
+        "isClient": true,
+        "hostname": "localhost",
+        "tests": [0,0,0,0,0,0,0],
+        "port": 3006
+    },
+    {
+        "id": "7",
+        "isClient": true,
+        "hostname": "localhost",
+        "tests": [0,0,0,0,0,0,0],
+        "port": 3007
     }
 ]

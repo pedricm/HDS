@@ -4,21 +4,30 @@ import com.google.gson.Gson;
 import pt.ulisboa.tecnico.hdsledger.communication.ConsensusMessage;
 import pt.ulisboa.tecnico.hdsledger.communication.BlockMessage;
 
-public class CommitMessage {
+public class RoundChangeMessage {
 
     // Value
-    private String value;
+    private String value = null;
+    private int round =-1;
 
-    public CommitMessage(BlockMessage value) {
+    public RoundChangeMessage(BlockMessage value, int round) {
         this.value = value.toJson();
+        this.round = round;
     }
-    public CommitMessage(String value) {
+    public RoundChangeMessage(String value, int round) {
         this.value = value;
+        this.round = round;
     }
-    public String getValue() {
+
+    public int getPreparedRound() {
+        return round;
+    }
+
+    public String getPreparedValue() {
         return value;
     }
-    public BlockMessage deserializeValue() {
+
+    public BlockMessage deserializePreparedValue() {
         return new Gson().fromJson(this.value, BlockMessage.class);
     }
 
