@@ -1,0 +1,51 @@
+[
+    {   
+        "id": "1",
+        "isClient": false,
+        "hostname": "localhost",
+        "tests": [0,0,0,0,0,0,0],
+        "port": 3001
+    },
+    {
+        "id": "2",
+        "isClient": false,
+        "hostname": "localhost",
+        "tests": [0,0,0,0,0,0,0],
+        "port": 3002
+    },
+    {
+        "id": "3",
+        "isClient": false,
+        "hostname": "localhost",
+        "tests": [0,0,0,0,0,0,0],
+        "port": 3003
+    },
+    {
+        "id": "4",
+        "isClient": false,
+        "hostname": "localhost",
+        "tests": [0,1,0,0,0,0,0],
+        "port": 3004
+    },
+    {
+        "id": "5",
+        "isClient": true,
+        "hostname": "localhost",
+        "tests": [0,1,0,0,0,0,0],
+        "port": 3005
+    },
+    {
+        "id": "6",
+        "isClient": true,
+        "hostname": "localhost",
+        "tests": [0,1,0,0,0,0,0],
+        "port": 3006
+    },
+    {
+        "id": "7",
+        "isClient": true,
+        "hostname": "localhost",
+        "tests": [0,0,0,0,0,0,0],
+        "port": 3007
+    }
+]
