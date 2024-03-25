@@ -118,7 +118,7 @@ public class ClientLibrary {
         }
 
         for (Map.Entry<Integer, Integer> entry : countMap.entrySet()) {
-            System.out.println("key: " + entry.getKey() + " value: " + entry.getValue());
+            //System.out.println("key: " + entry.getKey() + " value: " + entry.getValue());
             if (entry.getValue() >= this.f + 1) {
                 return entry.getKey();
             }

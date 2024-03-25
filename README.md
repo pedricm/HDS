@@ -44,6 +44,12 @@ Simulates a break of the network, will lead to a round change and then the nodes
 
 Will lead to that node sending round change messages and that other nodes will send their commit messages and the node will commit
 
+test 8 : stress test
+
+test 9 : stress test with biz leader
+
+test 10 : stress test with 50/50 checks and transfers
+
 
 //LEMBRAR FAZER TEST 8 PARA TESTAR FAZER CONCORRENTE ENQUANTO UMA ANTERIOR VAI TER DE FAZER LEADER CHANGE
 // matar 3 e fazer bue ex: 1:pppp 2:q ...8:u

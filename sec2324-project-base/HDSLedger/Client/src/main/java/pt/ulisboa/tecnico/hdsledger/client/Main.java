@@ -44,7 +44,15 @@ public class Main {
             Scanner parser = new Scanner(System.in);
 
             printUsage();
-
+            if (ClientConfig.getTest(2)) {
+                System.out.println("TEST MODE ACTIVATED");
+                client.test();
+                while (true){}
+            }
+            if (ClientConfig.getTest(3)) {
+                System.out.println("TEST MODE ACTIVATED");
+                client.test2();
+            }
             while (true) {
                 System.out.println("Type \"help\", for more information");
                 System.out.print("> ");
@@ -55,9 +63,11 @@ public class Main {
                         printUsage();
                         break;
                     case "transfer":
+                    case "t":
                         client.transfer();
                         break;
                     case "check_balance":
+                    case "c":
                         client.check_balance();
                         break;
                     default:
@@ -74,7 +84,7 @@ public class Main {
     private static void printUsage(){
         System.out.println("\n-----------------------------------------------");
         System.out.print("\tAvailable commands:\n" +
-                "transfer: transfer money between 2 accounts\n" +
-                "check_balance: obtain the balance a given account\n\n");
+                "transfer|t: transfer money between 2 accounts\n" +
+                "check_balance|c: obtain the balance a given account\n\n");
     }
 }

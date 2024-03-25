@@ -40,4 +40,15 @@ public class Client {
 
         clientLibrary.check_balance(account);
     }
+    public void test() {
+        for (int i = 0 ; i< 100; i++) {
+            clientLibrary.check_balance(Integer.toString((i%7)+1));
+        }
+    }
+    public void test2() {
+        for (int i = 0 ; i< 50; i++) {
+            clientLibrary.check_balance(Integer.toString((i%7)+1));
+            clientLibrary.transfer("6", 1);
+        }
+    }
 }
