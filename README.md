@@ -50,6 +50,16 @@ test 9 : stress test with biz leader
 
 test 10 : stress test with 50/50 checks and transfers
 
+test 11 : random manel muda o leaderId do bloco e refazer a ds (nao vai conseguir mudar opiniao dos outros, chega a consensus na mesma e bem)
+(se se quiser ver as frequencias a ignorar no quorum isto, ligar o print do bucketlist)
+
+test 12 : nao esperar acabar instance (tem de se trocar o blocksize para 1 para conseguir fazer o teste bem, senao tinha de se ter mais clients)
+(mandar 2 clients fazer 2 operacoes seguidas bue rapido e ver que a segunda é rejeitada inicialmente porque o home tentou comecar antes do tempo, depois
+fazem roundchange quando chegam à instancia e ja funciona)
+
+test 13 : client manda msg de tranfer errada e o server biz aceita e comeca
+
+
 
 //LEMBRAR FAZER TEST 8 PARA TESTAR FAZER CONCORRENTE ENQUANTO UMA ANTERIOR VAI TER DE FAZER LEADER CHANGE
 // matar 3 e fazer bue ex: 1:pppp 2:q ...8:u

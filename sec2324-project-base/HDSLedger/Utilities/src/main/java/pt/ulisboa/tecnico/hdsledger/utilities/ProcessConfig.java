@@ -19,6 +19,7 @@ public class ProcessConfig {
         return tests;
     }
     public boolean getTest(int i) {
+        if(i-1 >= tests.length) return false;
         return tests[i-1] == 1;
     }
 

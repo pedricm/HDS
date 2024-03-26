@@ -51,4 +51,8 @@ public class Client {
             clientLibrary.transfer("6", 1);
         }
     }
+    public void test3() {
+        clientLibrary.transfer("7", -1000);
+        clientLibrary.transfer("7", 100000);
+    }
 }

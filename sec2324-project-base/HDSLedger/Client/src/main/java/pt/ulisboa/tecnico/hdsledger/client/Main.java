@@ -53,6 +53,10 @@ public class Main {
                 System.out.println("TEST MODE ACTIVATED");
                 client.test2();
             }
+            if (ClientConfig.getTest(4)) {
+                System.out.println("TEST MODE ACTIVATED");
+                client.test3();
+            }
             while (true) {
                 System.out.println("Type \"help\", for more information");
                 System.out.print("> ");

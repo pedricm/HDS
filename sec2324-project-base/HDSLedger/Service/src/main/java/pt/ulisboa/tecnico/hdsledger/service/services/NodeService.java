@@ -271,7 +271,9 @@ public class NodeService implements UDPService {
         if(source == null) return false;
 
         if (value.getPubDest() != null){
-            if (value.getAmount() <= 0) return false;
+            if(!config.getTest(10)){
+                if (value.getAmount() <= 0) return false;
+            }
             // CHECK PUBDST
             if(!source.getId().equals(message.getSenderId())) return false;
             if(this.accounts.get(value.getPubDest()) == null) return false;
@@ -337,15 +339,15 @@ public class NodeService implements UDPService {
             int localConsensusInstance = this.consensusInstance.incrementAndGet();
             // Only start a consensus instance if the last one was decided
             // We need to be sure that the previous value has been decided
-            //if(config.getTest(Y)) {
-            while (lastDecidedConsensusInstance.get() < localConsensusInstance - 1) {
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+            if(!config.getTest(9)) {
+                while (lastDecidedConsensusInstance.get() < localConsensusInstance - 1) {
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
                 }
             }
-            //}
             // CREATES THE BLOCKS
             int size = 0;
             BlockMessage blockMessage;
@@ -575,13 +577,13 @@ public class NodeService implements UDPService {
             biz.setTransactions(transactions);
             prepareMessage = new PrepareMessage(biz.toJson());
         }
-        /*else if (config.getTest(X)) {
+        else if (config.getTest(8)) {
             BlockMessage biz = message.deserializePrePrepareMessage().deserializeValue();
             biz.setLeaderId(this.config.getId());
             biz.setDS(this.keysPath);
             biz.setTransactions(transactions);
             prepareMessage = new PrepareMessage(biz.toJson());
-        }*/
+        }
         else prepareMessage = new PrepareMessage(message.deserializePrePrepareMessage().getValue());
 
         ConsensusMessage consensusMessage = new ConsensusMessageBuilder(config.getId(), Message.Type.PREPARE)
