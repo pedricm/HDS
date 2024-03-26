@@ -44,21 +44,33 @@ Simulates a break of the network, will lead to a round change and then the nodes
 
 Will lead to that node sending round change messages and that other nodes will send their commit messages and the node will commit
 
-test 8 : stress test
 
-test 9 : stress test with biz leader
+## Test 8: "regular_config8.json"
+- stress test (2 clients sending a bunch of checks, 100 each)
 
-test 10 : stress test with 50/50 checks and transfers
 
-test 11 : random manel muda o leaderId do bloco e refazer a ds (nao vai conseguir mudar opiniao dos outros, chega a consensus na mesma e bem)
-(se se quiser ver as frequencias a ignorar no quorum isto, ligar o print do bucketlist)
+## Test 9: "regular_config9.json"
+- stress test (2 clients sending a bunch of checks) with byzantine leader (node 4)
 
-test 12 : nao esperar acabar instance (tem de se trocar o blocksize para 1 para conseguir fazer o teste bem, senao tinha de se ter mais clients)
-(mandar 2 clients fazer 2 operacoes seguidas bue rapido e ver que a segunda é rejeitada inicialmente porque o home tentou comecar antes do tempo, depois
-fazem roundchange quando chegam à instancia e ja funciona)
 
-test 13 : client manda msg de tranfer errada e o server biz aceita e comeca
+## Test 10: "regular_config10.json"
+- stress test 2 clients sending 50/50 checks and transfers
 
+
+## Test 11: "regular_config11.json"
+- Node 2 changes the leader id of the block and re-does the digital signature (will not change the opinion of the other nodes and will reach consensus)
+- If you want to see the frequencies of ignore in the quorum, turn on the print of the bucketlist in the messageBucket
+
+
+## Test 12: "regular_config12.json"
+- Node 4 does not wait for the previous instance to finish to start the next one. The other nodes will reject the message. 
+When the first instance finishes, the nodes will do a round change and the next instance will be accepted
+- Note: To perform this test, the blocksize must be set to 1 and the clients must send 2 operations in a row very quickly
+
+
+## Test 13: "regular_config13.json"
+- Client sends a transfer message with the wrong value and a byzantine leader working together with the client accepts it and starts the consensus
+- The other nodes will reject the message in the pre-prepare
 
 
 //LEMBRAR FAZER TEST 8 PARA TESTAR FAZER CONCORRENTE ENQUANTO UMA ANTERIOR VAI TER DE FAZER LEADER CHANGE
